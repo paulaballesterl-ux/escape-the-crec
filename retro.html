@@ -1,0 +1,1213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Escape the CREC: an English game for Unit 1 (Who am I?).">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Escape the CREC</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Lexend:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: retro RPG. HUD on top, one screen at a time (gate+intro, title, hero select, map+shop, VS, battle, room clear, side quest, victory).
+   Battle = arena (hero vs robot) above a cream dialog box with the question.
+   Single dark theme by choice: it is the game screen. Everything students read is Lexend on cream; pixel font only for short labels. */
+:root{
+  color-scheme: dark;
+  --night:#141933;
+  --floor:#1E2547;
+  --panel:#252E5A;
+  --line:#3D4884;
+  --cyan:#7FD3E6;
+  --amber:#FFC24D;
+  --pink:#FF7FA8;
+  --heart:#F0505A;
+  --xp:#5BD38C;
+  --violet:#B58CFF;
+  --text:#EEE7D9;
+  --muted:#A8AFD6;
+  --paper:#FBF3E2;
+  --ink:#27223A;
+  --ink-soft:#5E5873;
+  --good:#2E9E6B;
+  --good-soft:#DCF3E5;
+  --bad:#C9463F;
+  --bad-soft:#F9DEDA;
+  --pixel:"Press Start 2P", "Courier New", monospace;
+  --body:"Lexend", Verdana, system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0; background:var(--night); color:var(--text);
+  background-image:linear-gradient(rgba(127,211,230,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(127,211,230,.05) 1px,transparent 1px);
+  background-size:32px 32px;
+  font-family:var(--body); font-size:18px; line-height:1.6; letter-spacing:.02em; word-spacing:.08em;
+  padding-left:max(14px, env(safe-area-inset-left, 0px));
+  padding-right:max(14px, env(safe-area-inset-right, 0px));
+  padding-block:12px 40px;
+}
+body.big{font-size:21px}
+button{font:inherit; color:inherit; cursor:pointer}
+button:disabled{cursor:default}
+button:focus-visible,input:focus-visible{outline:4px solid var(--amber); outline-offset:3px}
+.wrap{max-width:1000px; margin:0 auto; display:flex; flex-direction:column; gap:14px}
+svg.spr{shape-rendering:crispEdges; image-rendering:pixelated; display:block}
+.frame{border:4px solid var(--ink); box-shadow:0 0 0 4px var(--line), 0 8px 0 4px #0B0E20}
+.pbox{background:var(--panel); border-radius:6px}
+
+/* HUD */
+.hud{display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; justify-content:space-between; background:var(--panel); border-radius:6px; padding:10px 14px}
+.hud .who{display:flex; align-items:center; gap:10px; min-width:0}
+.hud .who .mini{display:flex; align-items:flex-end; gap:1px}
+.hud .who .mini svg{width:18px; height:auto}
+.party{display:flex; align-items:flex-end; gap:3px}
+.pm{position:relative}
+.pm svg{width:clamp(28px,4.6vw,44px); height:auto; opacity:.8}
+.pm.on svg{width:clamp(56px,9vw,86px); opacity:1; animation:idle .7s ease-in-out infinite alternate}
+.pm.on::after{content:"▼"; position:absolute; top:-20px; left:50%; transform:translateX(-50%); color:var(--amber); font-size:.8rem; animation:bob .4s ease-in-out infinite alternate}
+.turn{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:var(--amber); font-family:var(--pixel); font-size:.6rem; padding:6px 10px; border-radius:4px; line-height:1.5}
+.turn svg{width:18px}
+.avatar .mini{display:flex; align-items:flex-end; gap:1px}
+.avatar .mini svg{width:20px; animation:none}
+.avatar .mini svg:first-child{width:30px; animation:bob .4s ease-in-out infinite alternate}
+.teamgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px}
+.teamgrid .hero input{font:inherit; font-size:.95rem; padding:6px 8px; border:3px solid var(--ink); background:var(--paper); color:var(--ink); border-radius:4px; width:100%; text-align:center}
+.hud .tn{font-family:var(--pixel); font-size:.62rem; color:var(--amber); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px}
+.stat{display:flex; align-items:center; gap:6px; font-family:var(--pixel); font-size:.68rem}
+.hearts{display:flex; gap:3px}
+.hearts svg{width:20px; height:auto}
+.xpbar{width:110px; height:14px; background:var(--night); border:2px solid var(--ink); position:relative}
+.xpbar i{position:absolute; inset:0 auto 0 0; background:var(--xp); transition:width .5s}
+.combo{color:var(--pink); animation:pulse2 .5s ease-in-out infinite alternate}
+@keyframes pulse2{to{transform:scale(1.12)}}
+.opts-bar{display:flex; flex-wrap:wrap; gap:6px}
+.pill{border:2px solid var(--line); background:var(--night); border-radius:4px; padding:5px 10px; font-size:.78rem; display:inline-flex; gap:6px; align-items:center}
+.pill[aria-pressed="true"]{border-color:var(--cyan); color:var(--cyan)}
+
+/* buttons */
+.btn{font-family:var(--pixel); font-size:.78rem; border:4px solid var(--ink); background:var(--amber); color:var(--ink); padding:14px 18px; box-shadow:0 5px 0 #8C5F12; line-height:1.4}
+.btn:active{transform:translateY(4px); box-shadow:0 1px 0 #8C5F12}
+.btn.cy{background:var(--cyan); box-shadow:0 5px 0 #3E8796}
+.btn.pk{background:var(--pink); box-shadow:0 5px 0 #8C2F52}
+.btn.gh{background:transparent; color:var(--text); border-color:var(--line); box-shadow:none}
+.btn:disabled{opacity:.4}
+.blink{animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@keyframes bob{to{transform:translateY(-6px)}}
+
+/* title */
+.title{display:flex; flex-direction:column; align-items:center; gap:22px; text-align:center; padding:clamp(20px,5vw,48px) 12px}
+.logo{font-family:var(--pixel); font-size:clamp(2.2rem,9vw,4.6rem); line-height:1.1; color:var(--amber); text-shadow:5px 5px 0 #8C2F52, 10px 10px 0 #0B0E20; margin:0}
+.logo span{color:var(--cyan)}
+.tag{font-family:var(--pixel); font-size:clamp(.6rem,1.8vw,.8rem); color:var(--muted); margin:0; line-height:1.8}
+.lineup{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; justify-content:center}
+.lineup svg{width:56px; height:auto}
+.lineup > svg:nth-child(odd){animation:bob .5s ease-in-out infinite alternate}
+.lineup > svg:nth-child(even){animation:bob .5s .25s ease-in-out infinite alternate}
+.lineup .vs{font-family:var(--pixel); color:var(--pink); font-size:1rem; padding-bottom:20px}
+.menu{display:flex; flex-direction:column; gap:12px; align-items:stretch; min-width:min(100%,300px)}
+
+/* hero select */
+.sel{display:flex; flex-direction:column; gap:18px; padding:clamp(16px,3vw,28px)}
+.sel h2{font-family:var(--pixel); font-size:clamp(.95rem,2.6vw,1.3rem); margin:0; line-height:1.5; color:var(--amber)}
+.heroes{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px}
+.hero{background:var(--night); border:4px solid var(--line); border-radius:6px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center}
+.hero svg{width:76px; height:auto}
+.hero b{font-family:var(--pixel); font-size:.8rem}
+.hero small{color:var(--muted); font-size:.85rem; line-height:1.4}
+.hero[aria-pressed="true"]{border-color:var(--amber); background:#2C2A4A; box-shadow:0 0 0 4px rgba(255,194,77,.25)}
+.hero[aria-pressed="true"] svg{animation:bob .4s ease-in-out infinite alternate}
+.field{display:flex; flex-direction:column; gap:6px; max-width:420px}
+.field label{font-weight:600}
+.field input{font:inherit; font-size:1.1rem; padding:10px 12px; border:4px solid var(--ink); background:var(--paper); color:var(--ink); border-radius:4px}
+
+/* dialog box */
+.dialog{background:var(--paper); color:var(--ink); border-radius:6px; padding:clamp(16px,3vw,26px); display:flex; flex-direction:column; gap:16px; position:relative}
+.speaker{position:absolute; top:-18px; left:18px; font-family:var(--pixel); font-size:.65rem; background:var(--ink); color:var(--amber); padding:6px 10px; border-radius:4px}
+.dialog .say{font-size:clamp(1.2rem,2.8vw,1.55rem); line-height:1.5; margin:0; max-width:46ch}
+.row{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+.row.end{justify-content:space-between}
+
+/* map */
+.mapwrap{position:relative; width:100%; aspect-ratio:16/9; background:var(--floor); border-radius:6px; overflow:hidden;
+  background-image:linear-gradient(rgba(255,255,255,.03) 2px,transparent 2px),linear-gradient(90deg,rgba(255,255,255,.03) 2px,transparent 2px); background-size:24px 24px}
+.mapwrap.tall{aspect-ratio:3/4}
+.mapwrap svg.path{position:absolute; inset:0; width:100%; height:100%}
+.room{position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:4px; border:0; background:none; padding:0; width:96px}
+.room .tile{width:62px; height:62px; border:4px solid var(--ink); border-radius:6px; background:var(--panel); display:grid; place-items:center; box-shadow:0 5px 0 #0B0E20}
+.room .tile svg{width:34px; height:34px}
+.room .nm{font-family:var(--pixel); font-size:.5rem; line-height:1.5; text-align:center; color:var(--muted); background:rgba(20,25,51,.85); padding:2px 5px; border-radius:3px}
+.room.done .tile{background:#1F5A47}
+.room.now .tile{background:var(--amber); animation:pulse 1s ease-in-out infinite alternate}
+.room.now .nm{color:var(--amber)}
+.room.lock .tile{opacity:.55}
+.room.boss .tile{width:74px; height:74px; background:#5A2241}
+.room.boss.now .tile{background:var(--pink)}
+@keyframes pulse{to{box-shadow:0 5px 0 #0B0E20, 0 0 0 8px rgba(255,194,77,.25)}}
+.stars{font-size:.7rem; color:var(--amber); letter-spacing:.1em}
+.avatar{position:absolute; transform:translate(-50%,-115%); transition:left .9s ease-in-out, top .9s ease-in-out; pointer-events:none; z-index:3}
+.avatar svg{width:40px; height:auto; animation:bob .4s ease-in-out infinite alternate}
+.maptools{display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between}
+.maptools p{margin:0; font-size:1rem}
+.shop{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; padding:16px}
+.item{background:var(--night); border:3px solid var(--line); border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px}
+.item .top{display:flex; align-items:center; gap:10px}
+.item .top svg{width:36px; height:auto}
+.item b{font-family:var(--pixel); font-size:.62rem; line-height:1.6}
+.item p{margin:0; font-size:.88rem; color:var(--muted); line-height:1.4}
+.item .btn{font-size:.62rem; padding:10px 12px}
+.shophead{display:flex; justify-content:space-between; align-items:center; padding:14px 16px 0; font-family:var(--pixel); font-size:.75rem; color:var(--amber)}
+
+/* VS */
+.vsbox{position:relative; height:clamp(260px,46vw,380px); border-radius:6px; overflow:hidden; display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+  background:linear-gradient(115deg,#2B3B7A 0 49.6%, #141933 49.6% 50.4%, #6A2343 50.4%)}
+.vsside{display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px}
+.vsside svg{width:clamp(80px,16vw,150px); height:auto}
+.vsside .nm{font-family:var(--pixel); font-size:clamp(.55rem,1.6vw,.85rem); text-align:center; line-height:1.6}
+.vsl{animation:inl .5s cubic-bezier(.2,1.4,.4,1) both}
+.vsr{animation:inr .5s .15s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes inl{from{transform:translateX(-120%)}}
+@keyframes inr{from{transform:translateX(120%)}}
+.vsmid{font-family:var(--pixel); font-size:clamp(2rem,7vw,3.6rem); color:var(--amber); text-shadow:4px 4px 0 #8C2F52; animation:vsin .45s .5s cubic-bezier(.2,1.8,.4,1) both}
+@keyframes vsin{from{transform:scale(4); opacity:0}}
+.vsroom{position:absolute; top:12px; left:0; right:0; text-align:center; font-family:var(--pixel); font-size:.6rem; color:var(--muted)}
+
+/* battle */
+.arena{position:relative; height:clamp(200px,31vw,270px); border-radius:6px; overflow:hidden}
+.arena.p2{animation:redpulse 1s ease-in-out infinite alternate}
+@keyframes redpulse{to{box-shadow:inset 0 0 60px rgba(240,80,90,.55)}}
+.arena .lvl{position:absolute; top:10px; left:12px; font-family:var(--pixel); font-size:.55rem; color:var(--muted); z-index:2}
+.fighter{position:absolute; bottom:16%; display:flex; flex-direction:column; align-items:center; gap:8px}
+.fighter.me{left:4%}
+.fighter.bot{right:10%}
+.fighter .sprw svg{width:clamp(66px,11vw,100px); height:auto; animation:idle .7s ease-in-out infinite alternate}
+.fighter.bot .sprw svg{animation-duration:.9s}
+.fighter.bot.boss .sprw svg{width:clamp(110px,18vw,160px)}
+@keyframes idle{to{transform:translateY(-4px)}}
+.hp{width:clamp(100px,16vw,150px)}
+.hp .lab{font-family:var(--pixel); font-size:.48rem; color:var(--text); display:flex; justify-content:space-between; margin-bottom:3px; gap:6px}
+.hp .bar{height:12px; background:var(--night); border:2px solid var(--ink)}
+.hp .bar i{display:block; height:100%; background:var(--heart); transition:width .4s}
+.lunge{animation:lunge .45s ease}
+@keyframes lunge{40%{transform:translateX(70px) scale(1.1)}}
+.hurt{animation:hurt .45s steps(2)}
+@keyframes hurt{25%{transform:translateX(-8px); filter:brightness(2.4)}50%{transform:translateX(8px)}75%{transform:translateX(-4px); filter:brightness(2.4)}}
+.zap{animation:zap .5s ease}
+@keyframes zap{40%{transform:translateX(-70px) scale(1.1)}}
+.dead{animation:die .9s ease forwards}
+@keyframes die{to{transform:scale(1.5) rotate(14deg); opacity:0; filter:brightness(3)}}
+.pop{position:absolute; font-family:var(--pixel); font-size:1rem; animation:popup 1s ease forwards; pointer-events:none; z-index:4; text-shadow:2px 2px 0 #0B0E20}
+.pop.crit{font-size:1.25rem}
+@keyframes popup{from{transform:translateY(0) scale(1.2); opacity:1}to{transform:translateY(-56px); opacity:0}}
+.spark{position:absolute; width:8px; height:8px; z-index:3; pointer-events:none; animation:spark .6s ease-out forwards}
+@keyframes spark{to{transform:translate(var(--dx),var(--dy)); opacity:0}}
+.whiteflash{position:absolute; inset:0; background:#fff; z-index:5; pointer-events:none; animation:wf .5s ease-out forwards}
+@keyframes wf{from{opacity:.9}to{opacity:0}}
+.bubble{position:absolute; top:16%; right:28%; max-width:40%; background:var(--paper); color:var(--ink); border:3px solid var(--ink); border-radius:6px; padding:6px 10px; font-size:.85rem; line-height:1.35; font-weight:600; z-index:3; animation:bubin .25s ease-out}
+.bubble::after{content:""; position:absolute; right:-12px; bottom:8px; border:6px solid transparent; border-left-color:var(--ink)}
+@keyframes bubin{from{transform:scale(.6); opacity:0}}
+.qtop{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between}
+.meter{display:flex; align-items:center; gap:6px; font-family:var(--pixel); font-size:.55rem; color:var(--ink-soft)}
+.meter i{width:18px; height:12px; border:2px solid var(--ink); background:#E6DCC6}
+.meter i.on{background:var(--violet)}
+.prompt{font-size:clamp(1.4rem,3.3vw,2rem); font-weight:500; line-height:1.4; margin:0; max-width:32ch}
+.prompt .blank{display:inline-block; min-width:2.8em; border-bottom:4px solid var(--ink); margin:0 .12em}
+.prompt b{color:#2F5E92; font-weight:600}
+.tool{border:3px solid var(--ink); background:#fff; color:var(--ink); border-radius:4px; padding:6px 10px; display:inline-flex; gap:6px; align-items:center; font-size:.85rem; font-weight:600}
+.tool svg{width:18px; height:18px}
+.tool:disabled{opacity:.4}
+.tool.super{background:var(--violet); animation:pulse2 .5s ease-in-out infinite alternate}
+.opts{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px}
+.opt{border:4px solid var(--ink); background:#fff; color:var(--ink); border-radius:6px; padding:12px 14px; min-height:70px; display:flex; align-items:center; gap:12px; text-align:left; font-size:clamp(1.15rem,2.4vw,1.4rem); font-weight:600; box-shadow:0 5px 0 var(--ink)}
+.opt:hover:not(:disabled){background:#FFF3D6}
+.opt:active:not(:disabled){transform:translateY(4px); box-shadow:0 1px 0 var(--ink)}
+.opt .k{flex:none; width:34px; height:34px; display:grid; place-items:center; background:var(--ink); color:var(--amber); font-family:var(--pixel); font-size:.75rem; border-radius:4px}
+.opt.ok{background:var(--good-soft); border-color:var(--good)}
+.opt.no{background:var(--bad-soft); border-color:var(--bad); text-decoration:line-through; text-decoration-thickness:3px; opacity:.75}
+.opt.gone{visibility:hidden}
+.opt.fig{flex-direction:column; text-align:center; padding:8px}
+.opt.fig svg{width:100%; max-width:140px; height:auto}
+.swatch{width:100px; height:100px; border-radius:50%; border:4px solid var(--ink)}
+.scene svg{width:100%; max-width:520px; height:auto; border:4px solid var(--ink); border-radius:6px; display:block}
+.help{background:#ECE4F7; border:3px solid var(--ink); border-radius:6px; padding:10px 14px; font-size:.95rem}
+.help table{border-collapse:collapse}
+.help td{padding:2px 14px 2px 0; vertical-align:top}
+.help td:first-child{font-weight:600}
+.fb{border:3px solid var(--ink); border-radius:6px; padding:12px 14px; display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; justify-content:space-between}
+.fb.good{background:var(--good-soft)}
+.fb.bad{background:var(--bad-soft)}
+.fb p{margin:0; font-size:1.05rem}
+.fb .big{font-family:var(--pixel); font-size:.8rem}
+.superbox{background:#EEE3FF; border:4px solid var(--ink); border-radius:6px; padding:16px; display:flex; flex-direction:column; gap:12px}
+.superbox .t{font-family:var(--pixel); font-size:.8rem; color:#5B2DA8}
+.superbox p{margin:0; font-size:clamp(1.25rem,3vw,1.7rem); font-weight:500; line-height:1.4}
+
+/* screens */
+.center{display:flex; flex-direction:column; align-items:center; gap:18px; text-align:center; padding:clamp(20px,4vw,40px) 14px}
+.center h2{font-family:var(--pixel); font-size:clamp(1.3rem,4.5vw,2.2rem); color:var(--amber); margin:0; line-height:1.4; text-shadow:4px 4px 0 #8C2F52}
+.bigstars{display:flex; gap:10px}
+.bigstars svg{width:56px; height:auto}
+.bigstars svg:nth-child(1){animation:starin .4s .1s both}
+.bigstars svg:nth-child(2){animation:starin .4s .4s both}
+.bigstars svg:nth-child(3){animation:starin .4s .7s both}
+@keyframes starin{from{transform:scale(0) rotate(-90deg)}}
+.loot{display:flex; flex-wrap:wrap; gap:12px; justify-content:center}
+.loot div{background:var(--night); border:3px solid var(--line); border-radius:6px; padding:8px 14px; font-family:var(--pixel); font-size:.62rem; line-height:1.8}
+.loot b{display:block; font-size:1rem; color:var(--amber)}
+.quest{background:var(--paper); color:var(--ink); border-radius:6px; padding:clamp(18px,4vw,34px); display:flex; flex-direction:column; gap:16px}
+.quest .cmd{font-size:clamp(1.5rem,4vw,2.3rem); font-weight:500; line-height:1.3; margin:0; max-width:24ch}
+.qbar{display:flex; gap:6px}
+.qbar i{flex:1; height:12px; background:#E3D8C2; border:2px solid var(--ink)}
+.qbar i.on{background:var(--xp)}
+.rank{font-family:var(--pixel); font-size:clamp(.9rem,3vw,1.2rem); color:var(--cyan); line-height:1.5; margin:0}
+.badges{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; width:100%; max-width:760px}
+.badge{background:var(--night); border:3px solid var(--line); border-radius:6px; padding:10px; text-align:left; display:flex; gap:10px; align-items:center; opacity:.4}
+.badge.on{opacity:1; border-color:var(--amber)}
+.badge svg{width:30px; flex:none}
+.badge b{display:block; font-size:.85rem}
+.badge small{font-size:.75rem; color:var(--muted); line-height:1.3; display:block}
+.toast{position:fixed; left:50%; bottom:max(18px,env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:60; background:var(--ink); border:4px solid var(--amber); color:var(--text); padding:10px 16px; display:flex; gap:10px; align-items:center; border-radius:6px; animation:toast 3s ease forwards; max-width:calc(100% - 28px)}
+.toast svg{width:28px; flex:none}
+.toast span{font-size:.9rem}
+.toast b{font-family:var(--pixel); font-size:.55rem; color:var(--amber); display:block; line-height:1.8}
+@keyframes toast{0%{transform:translate(-50%,120%)}12%,85%{transform:translate(-50%,0)}100%{transform:translate(-50%,160%)}}
+.confetti{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:50}
+.confetti i{position:absolute; top:-20px; width:10px; height:10px; animation:fall 2.6s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+
+/* cinematic intro */
+#intro{position:fixed; inset:0; z-index:40; background:#07091A; display:flex; align-items:center; justify-content:center;
+  padding:max(14px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) max(14px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px)); overflow:hidden}
+#intro .skip{position:absolute; top:max(14px,env(safe-area-inset-top,0px)); right:max(14px,env(safe-area-inset-right,0px)); z-index:5}
+.istage{position:relative; width:min(100%,960px); aspect-ratio:16/9; max-height:100%; overflow:hidden; border:4px solid #27223A; box-shadow:0 0 0 4px #3D4884; background:#07091A}
+.istage.shake{animation:ishake .5s steps(6)}
+@keyframes ishake{20%{transform:translate(-10px,6px)}40%{transform:translate(9px,-7px)}60%{transform:translate(-6px,-4px)}80%{transform:translate(5px,5px)}}
+.layer{position:absolute; inset:0; transition:opacity .5s}
+.term{padding:6% 7%; font-family:var(--pixel); font-size:clamp(.55rem,1.7vw,.95rem); line-height:2.1; color:#5BD38C}
+.term .r{color:#F0505A}
+.term .cur{display:inline-block; width:.7em; height:1em; background:#5BD38C; vertical-align:-2px; animation:blink .8s steps(1) infinite}
+.room-scene svg{width:100%; height:100%; display:block}
+.ihero{position:absolute; bottom:12%; width:8.5%; transition:left 2.6s linear}
+.ihero svg{width:100%; height:auto; animation:bob .25s ease-in-out infinite alternate}
+.door{transform-origin:right center; transform:scaleX(0); transition:transform .25s cubic-bezier(.6,0,1,1)}
+.door.shut{transform:scaleX(1)}
+.alarm{background:#F0505A; mix-blend-mode:screen; opacity:0; pointer-events:none}
+.alarm.on{animation:alarm .6s steps(1) infinite}
+@keyframes alarm{0%{opacity:.45}50%{opacity:0}}
+.cap{position:absolute; left:50%; bottom:5%; transform:translateX(-50%); width:max-content; max-width:88%; background:rgba(7,9,26,.88); border:3px solid #EEE7D9; color:#EEE7D9; padding:8px 16px; font-family:var(--body); font-size:clamp(.95rem,2.4vw,1.45rem); font-weight:600; text-align:center; line-height:1.4; z-index:4; transition:opacity .3s}
+.cap:empty{opacity:0}
+.cap.robot{border-color:#F0505A; color:#FFD4D6}
+.bigtext{position:absolute; inset:0; display:grid; place-items:center; text-align:center; font-family:var(--pixel); color:#F0505A; font-size:clamp(1.2rem,5vw,3rem); line-height:1.4; z-index:3}
+.glitch{animation:glitch .35s steps(2) infinite; text-shadow:4px 0 #7FD3E6,-4px 0 #F0505A}
+@keyframes glitch{0%{transform:translate(0)}25%{transform:translate(-4px,2px); clip-path:inset(10% 0 40% 0)}50%{transform:translate(3px,-2px); clip-path:inset(50% 0 5% 0)}75%{transform:translate(-2px,0); clip-path:none}}
+.eye{position:absolute; left:50%; top:50%; width:30%; transform:translate(-50%,-50%) scale(.2); opacity:0; transition:transform 2.4s ease-in, opacity .6s}
+.eye.in{transform:translate(-50%,-50%) scale(2.6); opacity:1}
+.eye svg{width:100%; height:auto}
+.army{position:absolute; left:0; right:0; bottom:-60%; display:flex; justify-content:space-around; align-items:flex-end; transition:bottom 1.8s ease-out}
+.army.up{bottom:6%}
+.army svg{width:13%; height:auto; filter:drop-shadow(0 0 10px rgba(240,80,90,.6))}
+.army svg:nth-child(3){width:19%}
+.scan{position:absolute; left:0; right:0; height:6px; background:rgba(127,211,230,.5); box-shadow:0 0 16px #7FD3E6; top:-10px; z-index:3}
+.scan.go{animation:scan 1.4s linear 2}
+@keyframes scan{to{top:100%}}
+.flash{background:#fff; opacity:0; z-index:6; pointer-events:none}
+.flash.go{animation:flash .7s ease-out}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+.ilogo{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4%; z-index:5}
+.ilogo .logo{font-size:clamp(2.4rem,10vw,6rem); transform:scale(4); opacity:0}
+.ilogo.go .logo{animation:slam .5s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes slam{to{transform:scale(1); opacity:1}}
+.ilogo .tag{opacity:0; transition:opacity .6s .6s}
+.ilogo .sub404{opacity:0; transition:opacity .4s .45s}
+.ilogo.go .sub404{opacity:1}
+.ilogo.go .tag{opacity:1}
+.stars-bg i{position:absolute; width:3px; height:3px; background:#EEE7D9; animation:blink 1.6s steps(2) infinite}
+.gate{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; height:100%; text-align:center}
+.gate .coin{font-family:var(--pixel); color:#FFC24D; font-size:clamp(.8rem,2.4vw,1.2rem); margin:0}
+.sub404{font-family:var(--pixel); font-size:clamp(.7rem,2.2vw,1rem); color:var(--ink); background:var(--pink); padding:8px 14px; border:4px solid var(--ink); box-shadow:4px 4px 0 #0B0E20; margin:0; transform:rotate(-3deg)}
+.term .g{color:#FFC24D}
+.eyeglitch svg{animation:hurt .3s steps(2) infinite}
+.ohero{position:absolute; bottom:12%; width:8.5%; transition:left 2.4s linear}
+.ohero svg{width:100%; height:auto; animation:bob .25s ease-in-out infinite alternate}
+.ohero.jump svg{animation:jump .45s ease-in-out infinite alternate}
+@keyframes jump{to{transform:translateY(-35%)}}
+.fw{position:absolute; width:6px; height:6px; z-index:3; pointer-events:none; animation:spark 1.2s ease-out forwards}
+.credits{position:absolute; inset:0; overflow:hidden; background:#07091A; z-index:4; transition:opacity .8s}
+.roll{position:absolute; left:0; right:0; top:100%; display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; color:#EEE7D9; font-family:var(--pixel); font-size:clamp(.5rem,1.6vw,.8rem); line-height:1.9; padding:0 6%}
+.roll h3{margin:22px 0 0; color:#FFC24D; font-size:1.25em; font-weight:400}
+.roll .big{font-size:clamp(1.2rem,4.5vw,2.4rem); color:#FFC24D; text-shadow:4px 4px 0 #8C2F52; line-height:1.3}
+.roll .big span{color:#7FD3E6}
+.cast{display:flex; flex-direction:column; gap:10px; align-items:center}
+.cast div{display:flex; align-items:center; gap:12px}
+.cast svg{width:30px; height:auto}
+.roll .bots{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
+.roll .bots svg{width:34px; height:auto; opacity:.6}
+.modes{display:flex; flex-wrap:wrap; gap:10px}
+.mode{font-family:var(--pixel); font-size:.7rem; line-height:1.6; border:4px solid var(--line); background:var(--night); color:var(--text); padding:12px 16px; border-radius:6px}
+.mode[aria-pressed="true"]{border-color:var(--amber); color:var(--amber); background:#2C2A4A}
+@media (prefers-reduced-motion: reduce){*{animation:none!important; transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div id="hud"></div>
+  <main id="app" aria-live="polite"></main>
+</div>
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+<div id="toasts"></div>
+<div id="intro" hidden></div>
+
+<script>
+/* ===== helpers ===== */
+const $=s=>document.querySelector(s);
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rich=s=>esc(s).replace(/&lt;(\/?)b&gt;/g,'<$1b>').replace(/___/g,'<span class="blank"></span>');
+const plain=s=>String(s).replace(/<[^>]+>/g,'');
+const SPK=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function say(t){ try{ if(!S.voice||!('speechSynthesis' in window))return; speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(plain(t).replace(/___/g,' blank ')); u.lang='en-GB'; u.rate=.82;
+  const vs=speechSynthesis.getVoices(); const v=vs.find(v=>/en-GB/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang)); if(v)u.voice=v;
+  speechSynthesis.speak(u);}catch(e){} }
+
+/* ===== sound engine: sfx + chiptune tracks ===== */
+let AC=null, MG=null, NOISE=null;
+function ac(){ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)(); MG=AC.createGain(); MG.gain.value=.8; MG.connect(AC.destination);
+  NOISE=AC.createBuffer(1,AC.sampleRate*.6,AC.sampleRate); const d=NOISE.getChannelData(0); for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1; }
+  if(AC.state==='suspended')AC.resume(); return AC; }
+function tone(f,t,d,type='square',vol=.07,dest){ const c=ac(),o=c.createOscillator(),g=c.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g); g.connect(dest||c.destination); o.start(t); o.stop(t+d+.02); }
+function noise(t,d,vol=.08,freq=4000,type='highpass',dest){ const c=ac(),src=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(); src.buffer=NOISE; f.type=type; f.frequency.value=freq; g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+d); src.connect(f); f.connect(g); g.connect(dest||c.destination); src.start(t); src.stop(t+d+.02); }
+function kick(t,dest){ const c=ac(),o=c.createOscillator(),g=c.createGain(); o.type='sine'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(40,t+.12); g.gain.setValueAtTime(.22,t); g.gain.exponentialRampToValueAtTime(.001,t+.15); o.connect(g); g.connect(dest); o.start(t); o.stop(t+.16); }
+const SEQ={hit:[[523,.07],[784,.09]],crit:[[523,.06],[784,.06],[1047,.12]],miss:[[220,.12],[150,.18]],win:[[523,.1],[659,.1],[784,.1],[1047,.25]],click:[[700,.035]],step:[[300,.05],[360,.05]],boom:[[140,.12],[90,.25]],coin:[[988,.05],[1319,.12]],
+  super:[[392,.08],[523,.08],[659,.08],[784,.08],[1047,.3]],ach:[[784,.08],[988,.08],[1175,.2]],door:[[200,.06],[260,.06],[200,.18]],heal:[[523,.06],[659,.06],[784,.06],[1047,.18]],
+  levelup:[[523,.08],[659,.08],[784,.08],[1047,.08],[1319,.3]],equip:[[880,.05],[1175,.05],[1568,.14]],charge:[[392,.05],[494,.05],[587,.05],[784,.05],[988,.18]],
+  powerdown:[[600,.1],[400,.12],[250,.15],[120,.32]],star:[[1047,.06],[1568,.2]],quest:[[659,.07],[784,.07],[1047,.16]],type:[[1200,.02]],blip:[[880,.02]]};
+function sfx(type){ if(!S.sound)return; try{ const c=ac(); let t=c.currentTime;
+  if(type==='whoosh'){ noise(t,.45,.12,800,'bandpass'); return; }
+  if(type==='explode'){ noise(t,.7,.25,600,'lowpass'); tone(110,t,.5,'sawtooth',.08); tone(70,t+.15,.5,'sawtooth',.07); return; }
+  if(type==='robot'){ for(let i=0;i<5;i++){ tone(300+Math.random()*700,t,.05,'square',.04); t+=.06; } return; }
+  if(type==='boom'){ noise(t,.3,.12,500,'lowpass'); }
+  const wave=(type==='miss'||type==='boom'||type==='powerdown')?'sawtooth':'square';
+  (SEQ[type]||SEQ.click).forEach(([f,d])=>{ tone(f,t,d,wave,type==='blip'||type==='type'?.03:.07); t+=d; });
+}catch(e){} }
+function siren(){ if(!S.sound)return; try{ let t=ac().currentTime; for(let i=0;i<6;i++){ tone(i%2?520:780,t,.32,'triangle',.06); t+=.33; } }catch(e){} }
+const NF=n=>{ if(!n||n==='-')return 0; const m=n.match(/^([A-G])(#?)(\d)$/); if(!m)return 0; const idx={C:0,D:2,E:4,F:5,G:7,A:9,B:11}[m[1]]+(m[2]?1:0); return 440*Math.pow(2,(idx+12*(+m[3]+1)-69)/12); };
+const TK=(s)=>s.trim().split(/\s+/);
+const TRACKS={
+ intro:{bpm:120,lead:TK('- - - - - - - - - - - - - - - -'),bass:TK('D2 - D2 - D2 - D2 - D#2 - D#2 - D#2 - D#2 -'),every:1,drums:'k-------k---h---'},
+ title:{bpm:150,lead:TK('C5 E5 G5 C6 B5 G5 E5 G5 A5 F5 A5 C6 B5 G5 D5 G5 C5 E5 G5 C6 D6 C6 B5 A5 G5 E5 F5 D5 C5 - C5 -'),bass:TK('C3 C3 C3 C3 F3 F3 G3 G3 C3 C3 C3 C3 F3 F3 G3 G3'),every:2,drums:'k-hhs-h-k-hhs-hh'},
+ map:{bpm:120,lead:TK('E5 - G5 - A5 - G5 E5 D5 - E5 - C5 - - - E5 - G5 - A5 - C6 A5 G5 - E5 - D5 - - -'),bass:TK('C3 C3 A2 A2 F2 F2 G2 G2 C3 C3 A2 A2 F2 F2 G2 G2'),every:2,drums:'k---h---s---h---',wave:'triangle',lv:.05},
+ quest:{bpm:140,lead:TK('G5 - E5 G5 - E5 G5 A5 G5 - E5 - C5 - D5 - G5 - E5 G5 - E5 G5 A5 B5 - C6 - G5 - - -'),bass:TK('C3 G2 C3 G2 F2 C3 G2 D3 C3 G2 C3 G2 F2 C3 G2 G2'),every:2,drums:'k-s-k-s-k-s-kss-'},
+ battle:{bpm:168,lead:TK('A4 C5 E5 A5 G5 E5 C5 E5 F4 A4 C5 F5 E5 C5 A4 C5 G4 B4 D5 G5 F5 D5 B4 D5 E5 - E5 - G#5 - B5 -'),bass:TK('A2 A2 A2 A2 F2 F2 F2 F2 G2 G2 G2 G2 E2 E2 E2 E2'),every:2,drums:'k-h-s-hkk-h-s-h-'},
+ boss:{bpm:184,lead:TK('D5 D5 F5 D5 A5 D5 G5 F5 D5 D5 F5 D5 C6 A5 G5 F5 A#4 D5 F5 A#5 A5 F5 D5 F5 A4 C#5 E5 A5 G5 E5 C#5 A4'),bass:TK('D2 D3 D2 D3 D2 D3 D2 D3 D2 D3 D2 D3 D2 D3 D2 D3 A#1 A#2 A#1 A#2 A#1 A#2 A#1 A#2 A1 A2 A1 A2 A1 A2 A1 A2'),every:1,drums:'kkh-skh-kkh-skss'},
+ victory:{bpm:132,lead:TK('C5 C5 C5 C5 G#4 - A#4 - C5 - A#4 C5 - - - - G5 - E5 - C6 - B5 A5 G5 - E5 G5 C6 - - -'),bass:TK('C3 C3 G#2 A#2 C3 C3 C3 C3 E3 E3 A2 A2 F2 G2 C3 C3'),every:2,drums:'k-h-s-h-k-h-s-hs'}
+};
+let curTrack=null, mStep=0, mNext=0;
+function setTrack(n){ if(curTrack===n)return; curTrack=n; mStep=0; mNext=0; }
+setInterval(()=>{ if(!S.music||!AC||AC.state!=='running'||!curTrack)return; const T=TRACKS[curTrack]; if(!T)return;
+  const dur=60/T.bpm/2; if(mNext<AC.currentTime)mNext=AC.currentTime+.05;
+  while(mNext<AC.currentTime+.15){ const i=mStep%T.lead.length;
+    const f=NF(T.lead[i]); if(f)tone(f,mNext,dur*.9,T.wave||'square',T.lv||.028,MG);
+    if(mStep%T.every===0){ const bf=NF(T.bass[(mStep/T.every|0)%T.bass.length]); if(bf)tone(bf,mNext,dur*T.every*.9,'triangle',.08,MG); }
+    const dch=T.drums[mStep%T.drums.length]; if(dch==='k')kick(mNext,MG); if(dch==='s')noise(mNext,.1,.07,1800,'highpass',MG); if(dch==='h')noise(mNext,.03,.03,7000,'highpass',MG);
+    mNext+=dur; mStep++; } },25);
+function trackFor(){ const sc=S.screen; if(['title','pick','story'].includes(sc))return 'title'; if(sc==='quest')return 'quest'; if(sc==='victory')return 'victory';
+  if(sc==='battle')return LEVELS[S.level].boss?'boss':'battle'; return 'map'; }
+
+/* ===== pixel sprites ===== */
+function sprite(rows,pal,cls='spr'){
+  const h=rows.length,w=rows[0].length; let r='';
+  rows.forEach((row,y)=>{ let x=0; while(x<w){ const c=row[x]; if(c==='.'){x++;continue} let n=1; while(x+n<w&&row[x+n]===c)n++; r+=`<rect x="${x}" y="${y}" width="${n}" height="1" fill="${pal[c]}"/>`; x+=n; } });
+  return `<svg class="${cls}" viewBox="0 0 ${w} ${h}" aria-hidden="true">${r}</svg>`;
+}
+const HERO_ROWS=["...hhhhhh...","..hhhhhhhh..","..hssssssh..","..sesssess..","..ssssssss..","...ssmmss...","....ssss....","..cccccccc..",".sccccccccs.",".sccccccccs.","..pppppppp..","..ppp..ppp..","..ppp..ppp..",".bbbb..bbbb."];
+const CROWN=["..y..y..y...","..yyyyyyy...","..yryyyry..."].map(r=>r.slice(0,12).padEnd(12,'.'));
+const NOHAT=["............","............","............"];
+const HEROES=[
+ {name:'NOVA',  power:'Super speed', pal:{h:'#2A2522',s:'#E8B48C',e:'#27223A',m:'#B5524C',c:'#FF7FA8',p:'#3D4884',b:'#27223A'}},
+ {name:'BLAZE', power:'Fire brain',  pal:{h:'#C8502E',s:'#F3C9A5',e:'#27223A',m:'#B5524C',c:'#FFC24D',p:'#27223A',b:'#7A4A2A'}},
+ {name:'PIXEL', power:'Hacker eyes', pal:{h:'#E9C35C',s:'#F3C9A5',e:'#27223A',m:'#B5524C',c:'#7FD3E6',p:'#5E5873',b:'#27223A'}},
+ {name:'ECHO',  power:'Super memory',pal:{h:'#7A4A2A',s:'#A86E4B',e:'#27223A',m:'#6B2E2A',c:'#5BD38C',p:'#27223A',b:'#3D4884'}},
+ {name:'ZARA',  power:'Laser focus', pal:{h:'#1E1A2E',s:'#6E4630',e:'#141933',m:'#4A1F1C',c:'#B58CFF',p:'#3D4884',b:'#FFC24D'}}
+];
+function heroSpr(i=S.hero){
+  let rows=[...(S.wear.crown?CROWN:NOHAT),...HERO_ROWS];
+  if(S.wear.glasses) rows[3+3]="..kkkkkkkk..";
+  return sprite(rows,{...HEROES[i].pal,y:'#FFC24D',r:'#F0505A',k:'#141933'});
+}
+function partyHTML(withId){ return `<div class="party">${HEROES.map((_,i)=>S.solo&&i!==S.hero?'':`<div class="pm ${i===S.hero?'on':''}" ${withId&&i===S.hero?'id="mespr"':''}>${heroSpr(i)}</div>`).join('')}</div>`; }
+function miniParty(){ const order=S.solo?[S.hero]:[S.hero,...HEROES.map((_,i)=>i).filter(i=>i!==S.hero)]; return `<span class="mini">${order.map(i=>heroSpr(i)).join('')}</span>`; }
+const who=(i=S.hero)=>HEROES[i].name+(S.players[i]?` (${S.players[i]})`:'');
+const BOT_ROWS=["......aa......","......aa......","...gggggggg...","..gmmmmmmmmg..","..gmyymmyymg..","..gmyymmyymg..","..gmmmmmmmmg..","..gmmkkkkmmg..","...gggggggg...",".gggggggggggg.","gg.gmmmmmmg.gg","gg.gmmrrmmg.gg","...gg....gg...","..ggg....ggg.."];
+const botPal=(m,y='#7FD3E6')=>({a:'#FFC24D',g:'#27223A',m,y,k:'#141933',r:'#FFC24D'});
+const HEART=[".rr.rr.","rrrrrrr","rrrrrrr",".rrrrr.","..rrr..","...r..."];
+const heart=on=>sprite(HEART,{r:on?'#F0505A':'#3D4884'});
+const STAR=["...y...","...y...","yyyyyyy",".yyyyy.","..yyy..",".yy.yy.","y.....y"];
+const star=on=>sprite(STAR,{y:on?'#FFC24D':'#3D4884'});
+const COIN=sprite([".yyy.","yyoyy","yyoyy","yyoyy",".yyy."],{y:'#FFC24D',o:'#E09A1F'});
+const TROPHY=sprite(["yyyyyyy","yyyyyyy",".yyyyy.","..yyy..","...y...","..yyy..",".yyyyy."],{y:'#FFC24D'});
+
+/* ===== people drawings (ID Scanner) ===== */
+const HC={blonde:'#E9C35C',brown:'#7A4A2A',black:'#2A2522',red:'#C8502E'};
+const VALS={hairColor:['blonde','brown','black','red'],hairStyle:['straight','curly','spiky','ponytail','bald'],face:['round','square','oval'],freckles:[true,false],beard:[true,false],height:['tall','short']};
+function figure(a){
+  const s=a.height==='tall'?1:.74,H=HC[a.hairColor],skin='#F1C09A',ink='#27223A';let back='',front='',head='';
+  if(a.hairStyle==='straight')back=`<rect x="27" y="28" width="66" height="66" rx="22" fill="${H}"/>`;
+  if(a.hairStyle==='ponytail')back=`<ellipse cx="96" cy="64" rx="10" ry="22" fill="${H}" stroke="${ink}" stroke-width="2"/>`;
+  if(a.hairStyle==='curly')for(const y of [58,70,82])back+=`<circle cx="30" cy="${y}" r="9" fill="${H}"/><circle cx="90" cy="${y}" r="9" fill="${H}"/>`;
+  if(a.face==='round')head=`<circle cx="60" cy="55" r="30" fill="${skin}" stroke="${ink}" stroke-width="2.5"/>`;
+  if(a.face==='square')head=`<rect x="31" y="26" width="58" height="58" rx="8" fill="${skin}" stroke="${ink}" stroke-width="2.5"/>`;
+  if(a.face==='oval')head=`<ellipse cx="60" cy="55" rx="24" ry="33" fill="${skin}" stroke="${ink}" stroke-width="2.5"/>`;
+  const cap=`<path d="M29 54 Q28 18 60 18 Q92 18 91 54 Q86 36 60 34 Q34 36 29 54Z" fill="${H}"/>`;
+  if(a.hairStyle==='straight')front=cap;
+  if(a.hairStyle==='ponytail')front=cap+`<circle cx="90" cy="46" r="5" fill="#FF7FA8" stroke="${ink}" stroke-width="2"/>`;
+  if(a.hairStyle==='curly')for(let t=0;t<=8;t++){const g=Math.PI*(1+t/8);front+=`<circle cx="${(60+31*Math.cos(g)).toFixed(1)}" cy="${(48+26*Math.sin(g)).toFixed(1)}" r="10" fill="${H}"/>`}
+  if(a.hairStyle==='spiky')front=`<polygon points="29,52 31,24 40,34 44,12 53,30 60,8 67,30 76,12 80,34 89,24 91,52 76,36 60,34 44,36" fill="${H}"/>`;
+  if(a.hairStyle==='bald')front=`<ellipse cx="50" cy="32" rx="8" ry="4" fill="#fff" opacity=".55"/>`;
+  const beard=a.beard?`<path d="M36 62 Q38 94 60 95 Q82 94 84 62 Q76 82 60 82 Q44 82 36 62Z" fill="${a.hairStyle==='bald'?'#6B4A33':H}"/>`:'';
+  const fr=a.freckles?[[42,65],[46,69],[38,69],[78,65],[74,69],[82,69]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.9" fill="#B5652F"/>`).join(''):'';
+  return `<svg viewBox="0 0 120 176" role="img" aria-label="person"><line x1="8" y1="172" x2="112" y2="172" stroke="#CFC5B2" stroke-width="3" stroke-linecap="round"/><g transform="translate(${(60-60*s).toFixed(1)} ${(172-172*s).toFixed(1)}) scale(${s})">${back}<rect x="52" y="80" width="16" height="16" fill="${skin}" stroke="${ink}" stroke-width="2"/><rect x="28" y="92" width="64" height="80" rx="24" fill="#7F93CF" stroke="${ink}" stroke-width="2.5"/>${head}${beard}${front}<circle cx="50" cy="56" r="3.2" fill="${ink}"/><circle cx="70" cy="56" r="3.2" fill="${ink}"/><path d="M51 70 Q60 77 69 70" stroke="${ink}" stroke-width="2.5" fill="none" stroke-linecap="round"/>${fr}</g></svg>`;
+}
+function hairPhrase(a){ if(a.hairStyle==='bald')return 'is <b>bald</b>'; if(a.hairStyle==='ponytail')return `has got a <b>${a.hairColor} ponytail</b>`;
+  const st={straight:'long straight',curly:'curly',spiky:'short spiky'}[a.hairStyle]; return `has got <b>${st} ${a.hairColor}</b> hair`; }
+function phrase(k,a){ return {hair:hairPhrase(a), face:`has got ${a.face==='oval'?'an':'a'} <b>${a.face}</b> face`, freckles:a.freckles?'has got <b>freckles</b>':"<b>hasn't got</b> freckles", beard:a.beard?'has got a <b>beard</b>':"<b>hasn't got</b> a beard", height:`is <b>${a.height}</b>`}[k]; }
+function makeLook(){
+  const p={}; for(const k in VALS)p[k]=rnd(VALS[k]);
+  const chosen=shuffle(['hair','face','freckles','beard','height']).slice(0,Math.random()<.5?2:3);
+  const pron=p.beard?'He':(p.hairStyle==='ponytail'?'She':rnd(['He','She']));
+  const parts=chosen.map(k=>phrase(k,p));
+  const sentence=`${pron} ${parts.slice(0,-1).join(', ')} and ${parts[parts.length-1]}.`;
+  const decoys=shuffle(chosen).slice(0,2).map(k=>{ const d={...p};
+    if(k==='hair'){ if(p.hairStyle!=='bald'&&Math.random()<.5)d.hairColor=rnd(VALS.hairColor.filter(v=>v!==p.hairColor)); else d.hairStyle=rnd(VALS.hairStyle.filter(v=>v!==p.hairStyle)); }
+    else if(k==='freckles'||k==='beard')d[k]=!p[k]; else d[k]=rnd(VALS[k].filter(v=>v!==p[k])); return d; });
+  const opts=shuffle([{p,ok:1},...decoys.map(d=>({p:d,ok:0}))]);
+  return {p:sentence, look:1, opts:opts.map(o=>o.p), a:opts.findIndex(o=>o.ok)};
+}
+
+/* ===== the room scene (There is / There are) ===== */
+const SCENE=`<svg viewBox="0 0 400 240" role="img" aria-label="A room with a window, a clock, a shelf with books, a desk, plants, a lamp and a chair">
+<rect width="400" height="182" fill="#E7DCF0"/><rect y="182" width="400" height="58" fill="#C99E73"/><path d="M0 182h400" stroke="#27223A" stroke-width="3"/>
+<rect x="22" y="30" width="92" height="80" rx="4" fill="#BFE3F2" stroke="#27223A" stroke-width="3"/><path d="M68 30v80M22 70h92" stroke="#27223A" stroke-width="3"/>
+<circle cx="190" cy="48" r="22" fill="#fff" stroke="#27223A" stroke-width="3"/><path d="M190 48V34M190 48h10" stroke="#27223A" stroke-width="3" stroke-linecap="round"/>
+<rect x="262" y="96" width="122" height="8" fill="#8A5A36" stroke="#27223A" stroke-width="2"/>
+<rect x="272" y="56" width="16" height="40" fill="#E5484D" stroke="#27223A" stroke-width="2"/><rect x="290" y="62" width="14" height="34" fill="#3B7BE0" stroke="#27223A" stroke-width="2"/><rect x="306" y="52" width="18" height="44" fill="#F5C518" stroke="#27223A" stroke-width="2"/>
+<rect x="140" y="132" width="150" height="10" fill="#8A5A36" stroke="#27223A" stroke-width="2"/><path d="M150 142v58M280 142v58" stroke="#27223A" stroke-width="5"/>
+<path d="M164 132l-6-24h28l-6 24z" fill="#F2907A" stroke="#27223A" stroke-width="2"/><ellipse cx="166" cy="98" rx="7" ry="14" fill="#3FB27F" stroke="#27223A" stroke-width="2"/><ellipse cx="180" cy="100" rx="7" ry="13" fill="#3FB27F" stroke="#27223A" stroke-width="2" transform="rotate(20 180 100)"/>
+<path d="M248 132v-30M236 102h24l-6-16h-12z" stroke="#27223A" stroke-width="3" fill="#FFC24D" stroke-linejoin="round"/>
+<path d="M330 214l-6-26h30l-6 26z" fill="#F2907A" stroke="#27223A" stroke-width="2"/><ellipse cx="332" cy="174" rx="8" ry="17" fill="#3FB27F" stroke="#27223A" stroke-width="2"/><ellipse cx="348" cy="176" rx="8" ry="16" fill="#3FB27F" stroke="#27223A" stroke-width="2" transform="rotate(25 348 176)"/>
+<path d="M60 222v-50h34v50M60 196h34" stroke="#27223A" stroke-width="4" fill="none"/></svg>`;
+
+/* ===== levels: first option is the correct one; each game picks a random set and shuffles options ===== */
+const H_BE=`<table><tr><td>I</td><td>am · I'm not</td></tr><tr><td>he / she / it</td><td>is · isn't</td></tr><tr><td>you / we / they</td><td>are · aren't</td></tr></table><p style="margin:6px 0 0">To be = ser / estar.</p>`;
+const LEVELS=[
+ {name:'Calendar Hall', short:'Calendar', bot:'CALENDROID', col:'#7FD3E6', icon:'cal', pick:6,
+  hi:'BEEP! Days, months, seasons, colours… Humans forget them. Robots never forget!', bye:'Error… my calendar is broken…',
+  sup:'SUPER MOVE: Say the months from January to June, all together, fast!',
+  help:'<table><tr><td>Monday…Sunday</td><td>lunes…domingo</td></tr><tr><td>January…December</td><td>enero…diciembre</td></tr><tr><td>spring / summer</td><td>primavera / verano</td></tr><tr><td>autumn / winter</td><td>otoño / invierno</td></tr><tr><td>red / green / purple</td><td>rojo / verde / morado</td></tr></table>',
+  qs:[{p:'Which day comes after Wednesday?',o:['Thursday','Tuesday','Friday']},
+      {p:'Which day comes before Monday?',o:['Sunday','Saturday','Tuesday']},
+      {p:'Which month comes before June?',o:['May','July','April']},
+      {p:'Which month comes after November?',o:['December','October','January']},
+      {p:'In Spain, January is in ___.',o:['winter','summer','autumn']},
+      {p:'In Spain, July is in ___.',o:['summer','winter','spring']},
+      {sw:'#22A06B',p:'What colour is it?',o:['green','blue','yellow']},
+      {sw:'#8B5CF6',p:'What colour is it?',o:['purple','pink','brown']},
+      {sw:'#E5484D',p:'What colour is it?',o:['red','orange','pink']},
+      {p:'How many months are there in a year?',o:['twelve','seven','ten']},
+      {p:'Which month has got 28 or 29 days?',o:['February','March','October']},
+      {p:'Which day comes after Saturday?',o:['Sunday','Friday','Monday']},
+      {p:'Which day comes before Friday?',o:['Thursday','Saturday','Tuesday']},
+      {p:'Which month comes after August?',o:['September','July','October']},
+      {p:'Which month comes before April?',o:['March','May','February']},
+      {p:'Which is the first month of the year?',o:['January','December','March']},
+      {p:'In Spain, October is in ___.',o:['autumn','spring','summer']},
+      {p:'In Spain, April is in ___.',o:['spring','winter','autumn']},
+      {p:'Which season comes after winter?',o:['spring','autumn','summer']},
+      {p:'How many days are there in a week?',o:['seven','five','twelve']},
+      {sw:'#3B7BE0',p:'What colour is it?',o:['blue','green','grey']},
+      {sw:'#F97316',p:'What colour is it?',o:['orange','yellow','red']},
+      {sw:'#EC6FAE',p:'What colour is it?',o:['pink','purple','red']},
+      {sw:'#8B5A2B',p:'What colour is it?',o:['brown','black','orange']},
+      {p:'Mix black and white. What colour do you get?',o:['grey','pink','brown']},
+      {p:'Mix red and yellow. What colour do you get?',o:['orange','green','purple']}]},
+ {name:'Mood Lab', short:'Mood Lab', bot:'MOODBOT', col:'#FF7FA8', icon:'per', pick:6,
+  hi:'I have got no feelings. Do YOU know personality adjectives?', bye:'Feelings… detected… system shutting down…',
+  sup:'SUPER MOVE: One player chooses a personality adjective and mimes it. The team says it in English!',
+  help:'<table><tr><td>polite</td><td>educado/a</td></tr><tr><td>punctual</td><td>puntual</td></tr><tr><td>generous</td><td>generoso/a</td></tr><tr><td>cheerful</td><td>alegre</td></tr><tr><td>quiet</td><td>callado/a</td></tr><tr><td>creative</td><td>creativo/a</td></tr><tr><td>bossy</td><td>mandón/a</td></tr><tr><td>hardworking</td><td>trabajador/a</td></tr><tr><td>sociable</td><td>sociable</td></tr><tr><td>reliable</td><td>fiable</td></tr><tr><td>easy-going</td><td>tranquilo/a</td></tr><tr><td>thoughtful</td><td>atento/a</td></tr><tr><td>loyal</td><td>leal / fiel</td></tr><tr><td>optimistic</td><td>optimista</td></tr><tr><td>mean / serious</td><td>antipático/a / serio/a</td></tr></table>',
+  qs:[{p:'Lucas always says <b>please</b> and <b>thank you</b>. He is…',o:['polite','bossy','mean']},
+      {p:'Emma is never late. She arrives <b>on time</b>. She is…',o:['punctual','creative','quiet']},
+      {p:'Pablo <b>gives</b> his snacks to his friends. He is…',o:['generous','serious','mean']},
+      {p:'Sara is always <b>happy</b>. She smiles a lot. She is…',o:['cheerful','serious','bossy']},
+      {p:'Leo <b>doesn\'t talk</b> a lot in class. He is…',o:['quiet','sociable','bossy']},
+      {p:'Nora paints, draws and has got <b>great ideas</b>. She is…',o:['creative','punctual','mean']},
+      {p:'Marc always <b>tells other people</b> what to do. He is…',o:['bossy','polite','quiet']},
+      {p:'Ana <b>works a lot</b> and studies every day. She is…',o:['hardworking','easy-going','mean']},
+      {p:'Tom loves parties and <b>meeting new people</b>. He is…',o:['sociable','quiet','serious']},
+      {p:'You can always <b>trust</b> Julia. She is…',o:['reliable','bossy','mean']},
+      {p:'Max is never nervous. He is <b>relaxed</b>. He is…',o:['easy-going','serious','bossy']},
+      {p:'Lola thinks <b>everything will be OK</b>. She is…',o:['optimistic','mean','punctual']},
+      {p:'Carla never laughs. She is always <b>very formal</b>. She is…',o:['serious','cheerful','easy-going']},
+      {p:'Dani is <b>not nice</b> to other people. He is…',o:['mean','polite','generous']},
+      {p:'Alba always <b>listens</b> to her friends and helps them. She is…',o:['thoughtful','bossy','mean']},
+      {p:'Hugo <b>never leaves</b> his friends alone. He is a good friend. He is…',o:['loyal','quiet','punctual']},
+      {p:'Bruno likes talking to <b>everybody</b> at school. He is…',o:['sociable','quiet','serious']},
+      {p:'Irene always <b>shares</b> her pencils. She is…',o:['generous','mean','serious']},
+      {p:'Óscar <b>studies a lot</b> and never stops working. He is…',o:['hardworking','easy-going','bossy']}]},
+ {name:'ID Scanner', short:'ID Scanner', bot:'SCANBOT', col:'#5BD38C', icon:'id', look:5,
+  hi:'SCANNING… Can you describe people? Find the right person!', bye:'Scan… failed… you are too good…',
+  sup:'SUPER MOVE: Describe a famous person (no names!): He / She has got… He / She is… The team guesses who it is!',
+  help:'<table><tr><td>long / short</td><td>largo / corto</td></tr><tr><td>straight / curly</td><td>liso / rizado</td></tr><tr><td>spiky</td><td>de punta</td></tr><tr><td>ponytail</td><td>coleta</td></tr><tr><td>bald</td><td>calvo</td></tr><tr><td>blonde / brown</td><td>rubio / castaño</td></tr><tr><td>beard / freckles</td><td>barba / pecas</td></tr><tr><td>round / square / oval</td><td>redonda / cuadrada / ovalada</td></tr><tr><td>tall / short</td><td>alto / bajo</td></tr></table>'},
+ {name:'To Be Terminal', short:'To Be', bot:'B-3 BOT', col:'#FFC24D', icon:'be', pick:6,
+  hi:'I AM a robot. You ARE robots too. Prove I am wrong!', bye:'I am… I is… I are… ERROR!',
+  sup:'SUPER MOVE: Say 3 sentences out loud: I am… · My friend is… · We are…',
+  help:H_BE,
+  qs:[{p:'My best friend ___ very sociable.',o:['is','are','am']},
+      {p:'We ___ in the same class.',o:['are','is','am']},
+      {p:'I ___ not bossy!',o:['am','is','are']},
+      {p:'___ your parents serious? — No, they aren\'t.',o:['Are','Is','Am']},
+      {p:'Is she creative? — Yes, she ___.',o:['is','are','am']},
+      {p:'It ___ Monday today.',o:['is','are','am']},
+      {p:'They ___ my cousins.',o:['are','is','am']},
+      {p:'___ you twelve? — Yes, I am.',o:['Are','Is','Am']},
+      {p:'Are we late? — No, we ___.',o:["aren't","isn't","am not"]},
+      {p:'My cat ___ black and white.',o:['is','are','am']},
+      {p:'I\'m not sad. I ___ cheerful!',o:['am','is','are']},
+      {p:'Where ___ you from?',o:['are','is','am']},
+      {p:'My parents ___ very easy-going.',o:['are','is','am']},
+      {p:'Lucía ___ not here today.',o:['is','are','am']},
+      {p:'___ it cold today? — Yes, it is.',o:['Is','Are','Am']},
+      {p:'I ___ in the first year of ESO.',o:['am','is','are']},
+      {p:'Are they your friends? — Yes, they ___.',o:['are','is','am']},
+      {p:'Is he punctual? — No, he ___.',o:["isn't","aren't","am not"]},
+      {p:'You ___ a great team!',o:['are','is','am']},
+      {p:'The robots ___ very angry!',o:['are','is','am']}]},
+ {name:'Radio Tower', short:'Radio', bot:'ASK-O-TRON', col:'#B58CFF', icon:'wh', pick:6,
+  hi:'I have got the answers… but who has got the questions?', bye:'Why? How? WHAT?! …offline.',
+  sup:'SUPER MOVE: Ask a classmate a question with Where, When or What. They answer in English!',
+  help:'<table><tr><td>What</td><td>qué</td></tr><tr><td>Where</td><td>dónde</td></tr><tr><td>Who</td><td>quién</td></tr><tr><td>How</td><td>cómo</td></tr><tr><td>Why</td><td>por qué</td></tr><tr><td>Which</td><td>cuál</td></tr><tr><td>When</td><td>cuándo</td></tr></table>',
+  qs:[{p:'___ is your birthday? — In October.',o:['When','Where','What']},
+      {p:'___ is your English teacher? — Mr Smith.',o:['Who','Why','How']},
+      {p:'___ are you sad? — Because I\'m tired.',o:['Why','Which','When']},
+      {p:'___ are you from? — From Mallorca.',o:['Where','Who','What']},
+      {p:'___ are you? — I\'m fine, thank you.',o:['How','Which','Who']},
+      {p:'___ bag is yours, the red one or the blue one?',o:['Which','When','Why']},
+      {p:'___ is she doing? — She is watching TV.',o:['What','Who','Where']},
+      {p:'___ is he? — He is my brother.',o:['Who','What','When']},
+      {p:'___ can I see you? — At seven o\'clock.',o:['When','Which','Why']},
+      {p:'___ old are you? — I\'m twelve.',o:['How','What','Who']},
+      {p:'___ is your favourite colour? — Green.',o:['What','Who','Where']},
+      {p:'___ do you live? — In Calvià.',o:['Where','When','Which']},
+      {p:'___ is your best friend? — Sara.',o:['Who','What','How']},
+      {p:'___ do you like summer? — Because there is no school!',o:['Why','Where','Who']},
+      {p:'___ season do you prefer, winter or summer?',o:['Which','Why','Who']},
+      {p:'___ is the English exam? — On Friday.',o:['When','Where','What']},
+      {p:'___ many brothers have you got? — Two.',o:['How','What','Which']},
+      {p:'___ is your phone? — It\'s in my bag.',o:['Where','Who','Why']}]},
+ {name:'Strange Room', short:'Room', bot:'COUNT BOT', col:'#F2907A', icon:'there', scene:1, pick:6,
+  hi:'Look at my room. Is there… are there… Can you count, human?', bye:'There is… no more robot here…',
+  sup:'SUPER MOVE: Look at YOUR classroom. Say 2 sentences: There is… · There are…',
+  help:'<table><tr><td>1 thing</td><td>There is… · Is there…?</td></tr><tr><td>2 or more</td><td>There are… · Are there any…?</td></tr><tr><td>No</td><td>There isn\'t / There aren\'t any</td></tr></table><p style="margin:6px 0 0">There is / There are = hay.</p>',
+  qs:[{p:'Look at the <b>shelf</b>.',o:['There are three books.','There is one book.','There are five books.']},
+      {p:'Look at the <b>wall</b>.',o:['There is a clock.','There are two clocks.','There aren\'t any clocks.']},
+      {p:'Look for <b>plants</b>.',o:['There are two plants.','There is one plant.','There are four plants.']},
+      {p:'Is there a <b>cat</b> in the room?',o:['No, there isn\'t.','Yes, there is.','No, there aren\'t.']},
+      {p:'Look at the <b>window</b>.',o:['There is one window.','There are two windows.','There aren\'t any windows.']},
+      {p:'Look at the desk. Is there a <b>lamp</b>?',o:['Yes, there is.','No, there isn\'t.','Yes, there are.']},
+      {p:'Look for <b>chairs</b>.',o:['There is one chair.','There are three chairs.','There aren\'t any chairs.']},
+      {p:'Are there any <b>dogs</b> in the room?',o:['No, there aren\'t.','Yes, there are.','No, there isn\'t.']},
+      {p:'Look at the <b>desk</b>.',o:['There is one desk.','There are two desks.','There aren\'t any desks.']},
+      {p:'Is there a <b>TV</b> in the room?',o:["No, there isn't.",'Yes, there is.',"No, there aren't."]},
+      {p:'Are there any <b>books</b> on the shelf?',o:['Yes, there are.',"No, there aren't.",'Yes, there is.']},
+      {p:'Look at the <b>lamp</b>.',o:['There is one lamp.','There are three lamps.',"There aren't any lamps."]},
+      {p:'Are there any <b>people</b> in the room?',o:["No, there aren't.",'Yes, there are.',"No, there isn't."]},
+      {p:'Is there a <b>red</b> book?',o:['Yes, there is.',"No, there isn't.",'Yes, there are.']},
+      {p:'Is there a <b>computer</b> on the desk?',o:["No, there isn't.",'Yes, there is.',"No, there aren't."]}]},
+ {name:'The Mainframe', short:'BOSS', bot:'MAINFRAME', col:'#F0505A', icon:'boss', boss:1, pick:8,
+  hi:'I AM THE MAINFRAME. Robots haven\'t got hearts. Have YOU got one?', bye:'NOOO! You… have got… a heart… YOU ARE HUMANS!',
+  sup:'SUPER MOVE: Everybody says 3 things they have got in their bag: I have got…',
+  help:'<table><tr><td>I / you / we / they</td><td>have got · haven\'t got</td></tr><tr><td>he / she / it</td><td>has got · hasn\'t got</td></tr></table><p style="margin:6px 0 0">Have got = tener.</p>',
+  qs:[{p:'Robots ___ got feelings.',o:["haven't","hasn't"]},
+      {p:'I ___ got a heart.',o:['have','has']},
+      {p:'My teacher ___ got a big smile.',o:['has','have']},
+      {p:'___ you got a name? — Yes, I have.',o:['Have','Has']},
+      {p:'Has a robot got a family? — No, it ___.',o:["hasn't","haven't"]},
+      {p:'We ___ got brains, not batteries!',o:['have','has']},
+      {p:'Have you got a pet? — No, I ___.',o:["haven't","hasn't"]},
+      {p:'My brother ___ got blue eyes.',o:['has','have']},
+      {p:'Sofía ___ curly red hair.',o:['has got','have got']},
+      {p:'There ___ seven days in a week.',o:['are','is']},
+      {p:'She ___ cheerful and she has got curly hair.',o:['is','are','am']},
+      {p:'___ is your birthday? — In March.',o:['When','Where','Who']},
+      {p:'___ your sister got a phone? — Yes, she has.',o:['Has','Have']},
+      {p:'They ___ got a big house.',o:['have','has']},
+      {p:'Our cat ___ got green eyes.',o:['has','have']},
+      {p:'Robots ___ got a birthday.',o:["haven't","hasn't"]},
+      {p:'He ___ got a beard. He is only twelve!',o:["hasn't","haven't"]},
+      {p:'Have we got English today? — Yes, we ___.',o:['have','has']},
+      {p:'Which month comes after April?',o:['May','June','March']},
+      {p:'Marc always says please. He is…',o:['polite','mean','bossy']},
+      {p:'___ a clock on the wall.',o:['There is','There are']}]}
+];
+const ICONS={
+ cal:'<rect x="3" y="5" width="18" height="16" fill="none" stroke="#27223A" stroke-width="2.5"/><path d="M3 10h18M8 3v4M16 3v4" stroke="#27223A" stroke-width="2.5"/>',
+ per:'<circle cx="12" cy="12" r="9" fill="none" stroke="#27223A" stroke-width="2.5"/><rect x="8" y="9" width="2" height="2" fill="#27223A"/><rect x="14" y="9" width="2" height="2" fill="#27223A"/><path d="M8 15h8" stroke="#27223A" stroke-width="2.5"/>',
+ id:'<rect x="3" y="5" width="18" height="14" fill="none" stroke="#27223A" stroke-width="2.5"/><rect x="6" y="9" width="5" height="5" fill="#27223A"/><path d="M14 10h4M14 14h4" stroke="#27223A" stroke-width="2.5"/>',
+ be:'<rect x="3" y="4" width="18" height="13" fill="none" stroke="#27223A" stroke-width="2.5"/><path d="M8 21h8M12 17v4M7 9l3 2-3 2" stroke="#27223A" stroke-width="2.5" fill="none"/>',
+ wh:'<path d="M12 13v8M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0" fill="none" stroke="#27223A" stroke-width="2.5"/>',
+ there:'<path d="M3 11l9-7 9 7v10H3z" fill="none" stroke="#27223A" stroke-width="2.5" stroke-linejoin="round"/><rect x="10" y="14" width="4" height="7" fill="#27223A"/>',
+ boss:'<rect x="5" y="6" width="14" height="12" fill="#27223A"/><rect x="8" y="9" width="3" height="3" fill="#FFC24D"/><rect x="13" y="9" width="3" height="3" fill="#FFC24D"/><path d="M12 2v4M8 18v4M16 18v4" stroke="#27223A" stroke-width="2.5"/>'
+};
+const SUP_SOLO=['SUPER MOVE: Say the months from January to June out loud, as fast as you can!',
+ 'SUPER MOVE: Choose a personality adjective and mime it. Your teacher guesses it in English!',
+ 'SUPER MOVE: Describe your teacher or a famous person: He / She has got… He / She is…',
+ 'SUPER MOVE: Say 3 sentences out loud: I am… · My friend is… · My family are…',
+ 'SUPER MOVE: Ask your teacher a question with Where, When or What. Listen to the answer!',
+ 'SUPER MOVE: Look at YOUR classroom. Say 2 sentences: There is… · There are…',
+ 'SUPER MOVE: Say 3 things you have got in your bag: I have got…'];
+const supText=L=>(S.solo&&SUP_SOLO[LEVELS.indexOf(L)])||L.sup;
+const QUESTS={
+ 1:["Stand up and turn around one time.","Touch something green in the classroom.","Say the days of the week together: first like a robot, then like a human!"],
+ 3:["Make a cheerful face. Now make a serious face!","Jump two times if your birthday is in spring or summer.","Stretch up very tall… now make yourself very short!"],
+ 5:["Clap your hands if you have got a brother or a sister.","Walk like a robot to the door and back.","Shout together: “We are not robots!”"]
+};
+const TAUNT_MISS=['Ha ha! Wrong!','Beep boop. Try again!','Robots win!','You are a robot!','Error! Error!'];
+const TAUNT_HIT=['Ouch!','Bzzzt!','Not fair!','My circuits!','Ow! Ow!'];
+const ACH={
+ perfect:['Perfect Room','A room with no mistakes'],
+ combo5:['Combo Master','Get a combo of x5'],
+ super:['Super Power','Use a super move'],
+ shop:['Big Spender','Buy something in the shop'],
+ boss:['Robot Hunter','Beat the Mainframe'],
+ nohelp:['No Help Needed','Escape without 50/50'],
+ legend:['Legend','Get all 21 stars']
+};
+const SHOP=[
+ {id:'heart',name:'EXTRA HEART',desc:'Get back one heart.',price:5,icon:()=>heart(true)},
+ {id:'fifty',name:'50/50',desc:'Remove one wrong answer. One more use.',price:6,icon:()=>sprite(["yyy.yyy","y...y.y","yyy.y.y","..y.y.y","yyy.yyy"],{y:'#7FD3E6'})},
+ {id:'glasses',name:'COOL GLASSES',desc:'Your hero looks super cool.',price:10,icon:()=>sprite(["kkkk.kkkk","kkkkkkkkk","kkk...kkk"],{k:'#EEE7D9'})},
+ {id:'crown',name:'GOLDEN CROWN',desc:'For real kings and queens of English.',price:15,icon:()=>sprite(CROWN,{y:'#FFC24D',r:'#F0505A'})}
+];
+
+/* ===== state ===== */
+const FRESH=()=>({screen:'title',hero:0,team:'',level:0,stars:[],xp:0,coins:0,hearts:5,combo:0,best:0,fifty:3,qi:0,hp:0,max:0,qs:[],wrong:0,
+  state:'ask',tried:[],removed:[],story:0,qstep:0,walkFrom:null,right:0,miss:0,charge:0,phase2:false,bubble:'',used50:false,shop:false,
+  solo:false,players:['','','','',''],own:{glasses:false,crown:false},wear:{glasses:false,crown:false},ach:[],
+  voice:true,es:true,big:false,sound:true,music:true,lvSeen:0});
+let S=FRESH();
+function save(){try{localStorage.setItem('room404v3',JSON.stringify(S))}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem('room404v3')||'null'); if(d&&d.screen&&!['title','victory','pick'].includes(d.screen))return d;}catch(e){} return null}
+function toast(title,text){ const t=document.createElement('div'); t.className='toast'; t.innerHTML=`${TROPHY}<span><b>${esc(title)}</b>${esc(text)}</span>`; $('#toasts').appendChild(t); setTimeout(()=>t.remove(),3100); }
+function unlock(k){ if(S.ach.includes(k))return; S.ach.push(k); sfx('ach'); toast('ACHIEVEMENT!',ACH[k][0]); }
+
+/* ===== HUD ===== */
+function drawHUD(){
+  const h=$('#hud'); const inGame=!['title','pick'].includes(S.screen);
+  h.innerHTML=`<div class="hud frame">
+    ${inGame?`<div class="who">${miniParty()}<span class="tn">${esc(S.team||(S.solo?HEROES[S.hero].name:'THE HUMANS'))}</span></div>
+    <div class="stat"><span class="hearts" aria-label="${S.hearts} hearts">${[0,1,2,3,4].map(i=>heart(i<S.hearts)).join('')}</span></div>
+    <div class="stat" title="Experience">LV${Math.floor(S.xp/200)+1}<span class="xpbar"><i style="width:${(S.xp%200)/2}%"></i></span></div>
+    <div class="stat" title="Coins"><span style="width:18px;display:block">${COIN}</span>${S.coins}</div>
+    ${S.combo>1?`<div class="stat combo">COMBO x${S.combo}</div>`:''}`:'<span style="font-family:var(--pixel);font-size:.6rem;color:var(--muted)">ENGLISH · UNIT 1: WHO AM I?</span>'}
+    <div class="opts-bar">
+      <button class="pill" data-tg="voice" aria-pressed="${S.voice}">Read aloud</button>
+      <button class="pill" data-tg="es" aria-pressed="${S.es}">Ayuda ES</button>
+      <button class="pill" data-tg="sound" aria-pressed="${S.sound}">Sound</button>
+      <button class="pill" data-tg="music" aria-pressed="${S.music}">Music</button>
+      <button class="pill" data-tg="big" aria-pressed="${S.big}">Big text</button>
+      ${inGame?'<button class="pill" data-act="quit">Menu</button>':''}
+    </div></div>`;
+  document.body.classList.toggle('big',S.big);
+}
+
+/* ===== render ===== */
+let lastSaid='', vsTimer=null;
+function render(fx){
+  const lv=Math.floor(S.xp/200); if(lv>(S.lvSeen||0)){ S.lvSeen=lv; setTimeout(()=>{sfx('levelup'); toast('LEVEL UP!','Your team is now LV '+(lv+1));},300); }
+  setTrack(trackFor());
+  drawHUD(); const app=$('#app'); const sc=S.screen;
+  if(sc==='title')app.innerHTML=titleHTML();
+  if(sc==='pick')app.innerHTML=pickHTML();
+  if(sc==='story')app.innerHTML=storyHTML();
+  if(sc==='map'){app.innerHTML=mapHTML(); animateWalk();}
+  if(sc==='battle')app.innerHTML=S.state==='vs'?vsHTML():battleHTML();
+  if(sc==='clear')app.innerHTML=clearHTML();
+  if(sc==='quest')app.innerHTML=questHTML();
+  if(sc==='victory')app.innerHTML=victoryHTML();
+  if(fx)applyFx(fx);
+  if(sc==='battle'&&S.state==='vs'){ clearTimeout(vsTimer); sfx('whoosh'); setTimeout(()=>sfx('boom'),550); vsTimer=setTimeout(()=>{ if(S.screen==='battle'&&S.state==='vs'){S.state='intro'; render();} }, reduced()?600:2100); }
+  autoSay(); if(!['title'].includes(sc))save();
+}
+function autoSay(){
+  let k='',t='';
+  if(S.screen==='battle'&&S.state==='intro'){k='i'+S.level;t=LEVELS[S.level].hi}
+  else if(S.screen==='battle'&&S.state==='ask'){k='q'+S.level+'-'+S.qi;t=S.qs[S.qi].p}
+  else if(S.screen==='battle'&&S.state==='super'){k='s'+S.level+'-'+S.qi;t=supText(LEVELS[S.level])}
+  else if(S.screen==='story'){k='st'+S.story;t=STORY[S.story][1]}
+  else if(S.screen==='quest'){k='x'+S.qkey+'-'+S.qstep;t=QUESTS[S.qkey]?.[S.qstep]||''}
+  if(k&&k!==lastSaid){lastSaid=k; say(t);}
+}
+
+/* ===== screens ===== */
+function titleHTML(){
+  const saved=load();
+  return `<section class="title">
+    <p class="tag">A GRAMMAR ADVENTURE</p>
+    <h1 class="logo">ESCAPE<br>THE <span>CREC</span></h1>
+    <p class="sub404">ROOM 404</p>
+    <div class="lineup">${HEROES.map(h=>sprite(HERO_ROWS,h.pal)).join('')}<span class="vs">VS</span>${sprite(BOT_ROWS,botPal('#F0505A','#FFC24D'))}</div>
+    <p class="tag" style="color:var(--text)">THE ROBOTS HAVE LOCKED YOU IN.<br>BEAT THEM WITH ENGLISH!</p>
+    <div class="menu">
+      <button class="btn" data-act="new"><span class="blink">▶</span> NEW GAME</button>
+      ${saved?'<button class="btn cy" data-act="continue">CONTINUE</button>':''}
+      <button class="btn gh" data-act="replay">WATCH INTRO</button>
+    </div>
+  </section>`;
+}
+function pickHTML(){
+  const solo=S.solo;
+  return `<section class="sel pbox frame">
+    <h2>${solo?'CHOOSE YOUR HERO':'MEET YOUR TEAM'}</h2>
+    <div class="modes" role="group" aria-label="Game mode"><button class="mode" data-mode="team" aria-pressed="${!solo}">TEAM · 5 HEROES</button><button class="mode" data-mode="solo" aria-pressed="${solo}">1 PLAYER</button></div>
+    <p style="margin:0">${solo?'Play alone! Choose your hero and write your name.':'Five heroes, one team. They take turns: each question is for a different hero. Write a player\'s name under each hero (optional).'}</p>
+    <div class="teamgrid">${HEROES.map((h,i)=>solo
+      ?`<button class="hero" data-hero="${i}" aria-pressed="${S.hero===i}">${sprite(HERO_ROWS,h.pal)}<b>${h.name}</b><small>Power: ${h.power}</small></button>`
+      :`<div class="hero" aria-pressed="true">${sprite(HERO_ROWS,h.pal)}<b>${h.name}</b><small>Power: ${h.power}</small><input id="pl${i}" data-pl="${i}" maxlength="14" placeholder="Player name" value="${esc(S.players[i])}" aria-label="Player for ${h.name}"></div>`).join('')}</div>
+    <div class="field"><label for="team">${solo?'Your name':'Team name'}</label><input id="team" maxlength="16" placeholder="${solo?'Your name':'The Humans'}" value="${esc(S.team)}"></div>
+    <div class="row"><button class="btn" data-act="go">START ▶</button></div>
+  </section>`;
+}
+const STORY=[
+ ['SYSTEM','Monday, 15:00. You walk into your classroom at the CREC. CLICK! The door is locked.'],
+ ['SYSTEM','A red screen turns on: IDENTITY NOT FOUND. The robots think you are robots too!'],
+ ['SYSTEM','Beat the 7 robots with English. Prove you are humans and escape from Room 404!']
+];
+function storyHTML(){
+  const [who,t]=STORY[S.story];
+  return `<section class="center"><div style="width:100%;max-width:720px">
+    <div class="arena frame" style="height:170px;background:linear-gradient(#232B55 0 68%,#1A2045 68%)"><div class="fighter me" style="left:6%">${partyHTML(false)}</div>
+      <div class="fighter bot" style="right:14%"><div class="sprw">${sprite(BOT_ROWS,botPal('#F0505A','#FFC24D'))}</div></div></div></div>
+    <div class="dialog frame" style="max-width:720px;width:100%;text-align:left"><span class="speaker">${who}</span>
+      <p class="say">${esc(t)}</p>
+      <div class="row end"><button class="tool" data-act="saystory">${SPK} Listen</button><button class="btn" data-act="storynext">${S.story<STORY.length-1?'NEXT ▶':'TO THE MAP ▶'}</button></div></div>
+  </section>`;
+}
+/* map + shop */
+const POS_W=[[9,72],[24,34],[39,70],[53,30],[67,68],[79,30],[91,64]];
+const POS_T=[[22,90],[70,77],[26,63],[72,49],[28,35],[72,22],[40,8]];
+const narrow=()=>window.innerWidth<640;
+function mapHTML(){
+  const pos=narrow()?POS_T:POS_W; const L=LEVELS[S.level];
+  const pts=pos.map(([x,y])=>`${x},${y}`).join(' ');
+  const rooms=LEVELS.map((l,i)=>{const done=S.stars[i]!=null, now=i===S.level, cls=done?'done':now?'now':'lock';
+    return `<button class="room ${cls} ${l.boss?'boss':''}" style="left:${pos[i][0]}%;top:${pos[i][1]}%" ${now?'data-act="enter"':'disabled'} aria-label="${l.name}">
+      <span class="tile"><svg viewBox="0 0 24 24" class="spr">${done?'<path d="M5 12l5 5 9-10" stroke="#EEE7D9" stroke-width="3" fill="none"/>':cls==='lock'?'<rect x="6" y="11" width="12" height="9" fill="#27223A"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" stroke="#27223A" stroke-width="2.5" fill="none"/>':ICONS[l.icon]}</svg></span>
+      <span class="nm">${l.short}</span>${done?`<span class="stars">${'★'.repeat(S.stars[i])}${'☆'.repeat(3-S.stars[i])}</span>`:''}</button>`}).join('');
+  const from=S.walkFrom!=null?pos[S.walkFrom]:pos[S.level];
+  const shop=S.shop?`<div class="pbox frame"><div class="shophead"><span>ROBOT SHOP</span><span style="display:flex;gap:6px;align-items:center"><span style="width:16px;display:block">${COIN}</span>${S.coins}</span></div>
+    <div class="shop">${SHOP.map(it=>{ const owned=(it.id==='glasses'||it.id==='crown')&&S.own[it.id]; const full=it.id==='heart'&&S.hearts>=5;
+      const label=owned?(S.wear[it.id]?'TAKE OFF':'WEAR'):full?'FULL':`BUY · ${it.price}`;
+      const dis=!owned&&(full||S.coins<it.price);
+      return `<div class="item"><div class="top">${it.icon()}<b>${it.name}</b></div><p>${it.desc}</p><button class="btn ${owned?'cy':''}" data-buy="${it.id}" ${dis?'disabled':''}>${label}</button></div>`}).join('')}</div></div>`:'';
+  return `<section style="display:flex;flex-direction:column;gap:16px">
+    <div class="mapwrap frame ${narrow()?'tall':''}">
+      <svg class="path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="#3D4884" stroke-width="6" stroke-dasharray="2 10" stroke-linecap="square" vector-effect="non-scaling-stroke"/></svg>
+      ${rooms}
+      <div class="avatar" id="avatar" style="left:${from[0]}%;top:${from[1]}%">${miniParty()}</div>
+    </div>
+    <div class="maptools"><p>Next: <b>${L.name}</b> · Robot: <b style="color:${L.col}">${L.bot}</b></p>
+      <div class="row"><button class="btn pk" data-act="shop">${S.shop?'CLOSE SHOP':'SHOP'}</button><button class="btn" data-act="enter">ENTER ROOM ▶</button></div></div>
+    ${shop}
+  </section>`;
+}
+function animateWalk(){
+  if(S.walkFrom==null)return; const pos=(narrow()?POS_T:POS_W)[S.level]; S.walkFrom=null;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{const a=$('#avatar'); if(a){a.style.left=pos[0]+'%'; a.style.top=pos[1]+'%'; sfx('step'); setTimeout(()=>sfx('step'),400);}}));
+}
+function buy(id){
+  const it=SHOP.find(x=>x.id===id);
+  if((id==='glasses'||id==='crown')&&S.own[id]){ S.wear[id]=!S.wear[id]; sfx('click'); render(); return; }
+  if(S.coins<it.price)return;
+  S.coins-=it.price; sfx(id==='heart'?'heal':id==='fifty'?'coin':'equip'); unlock('shop');
+  if(id==='heart')S.hearts=Math.min(5,S.hearts+1);
+  if(id==='fifty')S.fifty++;
+  if(id==='glasses'||id==='crown'){ S.own[id]=true; S.wear[id]=true; }
+  render();
+}
+/* VS + battle */
+function pickQs(lv,L){
+  let seen={}; try{seen=JSON.parse(localStorage.getItem('crecSeenQ')||'{}')}catch(e){}
+  const n=Math.min(L.pick||L.qs.length,L.qs.length); let used=seen[lv]||[];
+  let chosen=shuffle(L.qs.filter(q=>!used.includes(q.p))).slice(0,n);
+  if(chosen.length<n){ used=[]; chosen=chosen.concat(shuffle(L.qs.filter(q=>!chosen.includes(q))).slice(0,n-chosen.length)); }
+  seen[lv]=used.concat(chosen.map(q=>q.p));
+  try{localStorage.setItem('crecSeenQ',JSON.stringify(seen))}catch(e){}
+  return chosen;
+}
+function startLevel(){
+  const L=LEVELS[S.level];
+  S.qs=L.look?Array.from({length:L.look},makeLook):pickQs(S.level,L).map(q=>({p:q.p,sw:q.sw,opts:shuffle(q.o),a:q.o[0]}));
+  S.qi=0; S.hp=S.max=S.qs.length; S.wrong=0; S.state='vs'; S.tried=[]; S.removed=[]; S.screen='battle'; S.charge=0; S.phase2=false; S.bubble='';
+}
+function botSprite(L){ return sprite(BOT_ROWS,S.phase2?botPal('#8C1F2E','#FFC24D'):botPal(L.col,L.boss?'#FFC24D':'#EEE7D9')); }
+function vsHTML(){
+  const L=LEVELS[S.level];
+  return `<section class="vsbox frame">
+    <span class="vsroom">ROOM ${S.level+1} / 7 · ${L.name.toUpperCase()}</span>
+    <div class="vsside vsl">${partyHTML(false)}<span class="nm" style="color:var(--amber)">${esc((S.team||(S.solo?HEROES[S.hero].name:'THE HUMANS')).toUpperCase())}</span></div>
+    <div class="vsmid">VS</div>
+    <div class="vsside vsr">${botSprite(L)}<span class="nm" style="color:${L.col}">${L.bot}</span></div>
+  </section>`;
+}
+function battleHTML(){
+  const L=LEVELS[S.level], q=S.qs[S.qi];
+  const arena=`<div class="arena frame ${S.phase2?'p2':''}" id="arena" style="background:radial-gradient(circle at 78% 42%, ${L.col}40, transparent 42%), linear-gradient(#232B55 0 68%, #1A2045 68%)">
+    <span class="lvl">ROOM ${S.level+1}/7 · ${L.name.toUpperCase()}${S.phase2?' · PHASE 2':''}</span>
+    ${S.bubble?`<div class="bubble">${esc(S.bubble)}</div>`:''}
+    <div class="fighter me"><div class="hp"><div class="lab"><span>${esc((S.team||(S.solo?HEROES[S.hero].name:'THE HUMANS')).slice(0,12))}</span><span>${S.hearts}/5</span></div><div class="bar"><i style="width:${S.hearts*20}%;background:var(--xp)"></i></div></div>${partyHTML(true)}</div>
+    <div class="fighter bot ${L.boss?'boss':''}"><div class="hp"><div class="lab"><span>${L.bot}</span><span>${S.hp}/${S.max}</span></div><div class="bar"><i style="width:${S.hp/S.max*100}%"></i></div></div><div class="sprw ${S.state==='won'?'dead':''}" id="botspr">${botSprite(L)}</div></div>
+  </div>`;
+  if(S.state==='intro') return `<section style="display:flex;flex-direction:column;gap:18px">${arena}
+    <div class="dialog frame"><span class="speaker">${L.bot}</span><p class="say">${esc(L.hi)}</p>
+      <div class="row end"><button class="tool" data-act="sayhi">${SPK} Listen</button><button class="btn" data-act="fight">FIGHT! ▶</button></div></div></section>`;
+  if(S.state==='won') return `<section style="display:flex;flex-direction:column;gap:18px">${arena}<div class="dialog frame"><span class="speaker">${L.bot}</span><p class="say">${esc(L.bye)}</p></div></section>`;
+  const answered=S.state==='right', canAct=['ask','wrong','reboot'].includes(S.state);
+  const superReady=S.charge>=3;
+  let body='';
+  if(S.state==='super'){
+    body=`<div class="superbox"><span class="t">★ SUPER MOVE · REAL WORLD ★</span><p>${esc(supText(L).replace('SUPER MOVE: ',''))}</p>
+      <div class="row end"><button class="tool" data-act="saysuper">${SPK} Listen</button><div class="row"><button class="btn gh" data-act="supercancel" style="color:var(--ink);border-color:var(--ink)">NOT NOW</button><button class="btn pk" data-act="superdone">DONE! SUPER HIT ▶</button></div></div></div>`;
+  } else {
+    const optHTML=q.opts.map((o,i)=>{
+      const isOk=q.look?i===q.a:o===q.a; let cls='';
+      if(S.tried.includes(i))cls='no'; if(answered&&isOk)cls='ok'; if(S.removed.includes(i)&&!answered)cls+=' gone';
+      const dis=!canAct||S.tried.includes(i)||S.removed.includes(i);
+      return q.look?`<button class="opt fig ${cls}" data-o="${i}" ${dis?'disabled':''}>${figure(o)}<span class="k">${i+1}</span></button>`
+                   :`<button class="opt ${cls}" data-o="${i}" ${dis?'disabled':''}><span class="k">${i+1}</span><span>${esc(o)}</span></button>`;
+    }).join('');
+    let fb='';
+    if(S.state==='right'){ const full=q.look?'':rich(q.p.includes('___')?q.p.replace('___',q.a):q.a);
+      fb=`<div class="fb good"><p><span class="big">${S.combo>=3?'CRITICAL HIT!':rnd(['GREAT!','NICE HIT!','AWESOME!','BOOM!'])}</span> ${full?'&nbsp;'+full:''}</p><button class="btn" data-act="next" id="nextbtn">${S.hp===0?'DEFEAT IT ▶':'NEXT ▶'}</button></div>`; }
+    if(S.state==='wrong') fb=`<div class="fb bad"><p><span class="big">OUCH!</span>&nbsp; Not that one. Try again!</p></div>`;
+    if(S.state==='reboot') fb=`<div class="fb bad"><p><span class="big">SYSTEM REBOOT</span>&nbsp; Hearts restored! You lose 3 coins. Try again!</p></div>`;
+    body=`${L.scene?`<div class="scene">${SCENE}</div>`:''}
+      ${q.sw?`<div class="swatch" style="background:${q.sw}"></div>`:''}
+      <p class="prompt">${rich(q.p)}</p>
+      ${q.look?'<p style="margin:-8px 0 0;color:var(--ink-soft);font-size:.95rem">Which person is it?</p>':''}
+      <div class="help" id="help" hidden>${L.help}</div>
+      <div class="opts">${optHTML}</div>${fb}`;
+  }
+  return `<section style="display:flex;flex-direction:column;gap:18px">${arena}
+    <div class="dialog frame">
+      <div class="qtop"><span class="turn">${heroSpr()} ${esc(S.solo?(S.state==='super'?'SUPER MOVE':'GO, '+(S.team||HEROES[S.hero].name)+'!'):(S.state==='super'?'WHOLE TEAM':who()+'\'S TURN'))}</span><span class="meter">SUPER ${[0,1,2].map(i=>`<i class="${i<S.charge?'on':''}"></i>`).join('')}</span>
+        <div class="row"><button class="tool" data-act="sayq">${SPK} Listen</button>
+          ${S.es?'<button class="tool" data-act="help" aria-expanded="false">Ayuda</button>':''}
+          <button class="tool" data-act="fifty" ${S.fifty&&canAct&&!S.removed.length&&q.opts.length>2?'':'disabled'}>50/50 ×${S.fifty}</button>
+          ${superReady&&canAct?'<button class="tool super" data-act="super">★ SUPER MOVE</button>':''}</div></div>
+      ${body}
+    </div></section>`;
+}
+function applyFx(fx){
+  const me=$('#mespr'),bot=$('#botspr'),ar=$('#arena'); if(!ar)return;
+  const pop=(txt,side,col,crit)=>{const p=document.createElement('span');p.className='pop'+(crit?' crit':'');p.textContent=txt;p.style.color=col;p.style[side]='18%';p.style.top='26%';ar.appendChild(p);setTimeout(()=>p.remove(),1000)};
+  const sparks=(col)=>{ if(reduced())return; const r=bot.getBoundingClientRect(),a=ar.getBoundingClientRect(); for(let i=0;i<12;i++){const s=document.createElement('i');s.className='spark';s.style.background=rnd(col);
+    s.style.left=(r.left-a.left+r.width/2)+'px'; s.style.top=(r.top-a.top+r.height/2)+'px'; s.style.setProperty('--dx',(Math.random()*160-80)+'px'); s.style.setProperty('--dy',(Math.random()*-120+20)+'px'); ar.appendChild(s); setTimeout(()=>s.remove(),700);} };
+  if(fx==='hit'||fx==='crit'){ me&&me.classList.add('lunge'); setTimeout(()=>{bot&&bot.classList.add('hurt'); sparks(['#FFC24D','#EEE7D9','#7FD3E6']); pop(fx==='crit'?'CRITICAL!':'-1','right','#FFC24D',fx==='crit');},180); setTimeout(()=>{const b=$('#nextbtn'); b&&b.focus();},60); }
+  if(fx==='super'){ const w=document.createElement('div'); w.className='whiteflash'; ar.appendChild(w); setTimeout(()=>w.remove(),600); me&&me.classList.add('lunge'); setTimeout(()=>{bot&&bot.classList.add('hurt'); sparks(['#B58CFF','#FF7FA8','#FFC24D']); sparks(['#B58CFF','#FFC24D']); pop('SUPER -2','right','#B58CFF',true);},180); }
+  if(fx==='miss'){ bot&&bot.classList.add('zap'); setTimeout(()=>{me&&me.classList.add('hurt'); pop('-♥','left','#F0505A');},200); }
+}
+function checkPhase(){ const L=LEVELS[S.level]; if(L.boss&&!S.phase2&&S.hp>0&&S.hp<=Math.floor(S.max/2)){ S.phase2=true; S.bubble='PHASE 2! Now I am REALLY angry!'; sfx('boom'); } }
+function answer(i){
+  if(S.screen!=='battle'||!['ask','wrong','reboot'].includes(S.state))return;
+  const q=S.qs[S.qi]; const ok=q.look?i===q.a:q.opts[i]===q.a;
+  if(ok){
+    S.hp--; S.combo++; S.best=Math.max(S.best,S.combo); S.right++; if(S.charge===2)setTimeout(()=>sfx('charge'),500); S.charge=Math.min(3,S.charge+1);
+    const crit=S.combo>=3; S.xp+=10+5*Math.min(S.combo-1,4); S.coins+=1+(crit?1:0);
+    S.state='right'; S.bubble=rnd(TAUNT_HIT); checkPhase(); setTimeout(()=>sfx('robot'),420);
+    sfx(crit?'crit':'hit'); setTimeout(()=>sfx('coin'),240);
+    if(S.combo>=5)unlock('combo5');
+    render(crit?'crit':'hit');
+    say(rnd(['Great!','Nice hit!','Awesome!'])+' '+(q.look?'':(q.p.includes('___')?q.p.replace('___',q.a):q.a)));
+  } else {
+    S.tried.push(i); S.combo=0; S.wrong++; S.miss++; S.hearts--; sfx('miss'); setTimeout(()=>sfx('robot'),300); S.bubble=rnd(TAUNT_MISS);
+    if(S.hearts<=0){ setTimeout(()=>sfx('powerdown'),350); S.hearts=5; S.coins=Math.max(0,S.coins-3); S.state='reboot'; } else S.state='wrong';
+    render('miss');
+  }
+}
+function winLevel(){
+  S.state='won'; S.bubble=''; render(); sfx('explode'); say(LEVELS[S.level].bye);
+  setTimeout(()=>{ const st=S.wrong===0?3:S.wrong<=2?2:1; S.stars[S.level]=st; S.xp+=30*st; if(st===3)unlock('perfect');
+    S.screen='clear'; render(); sfx('win'); confetti(50); for(let k=0;k<st;k++)setTimeout(()=>sfx('star'),250+k*300); }, 1700);
+}
+function nextQ(){
+  if(S.hp<=0){ winLevel(); return; }
+  S.qi++; if(!S.solo)S.hero=(S.hero+1)%HEROES.length; S.state='ask'; S.tried=[]; S.removed=[]; S.bubble=S.phase2&&S.bubble.startsWith('PHASE')?'':''; render();
+}
+function clearHTML(){
+  const L=LEVELS[S.level], st=S.stars[S.level];
+  return `<section class="center pbox frame">
+    <h2>${L.boss?'BOSS DEFEATED!':'ROOM CLEAR!'}</h2>
+    <div class="bigstars">${[0,1,2].map(i=>star(i<st)).join('')}</div>
+    <div class="dialog" style="max-width:620px;text-align:left"><span class="speaker">${L.bot}</span><p class="say">${esc(L.bye)}</p></div>
+    <div class="loot"><div>STARS<b>${st}/3</b></div><div>XP<b>${S.xp}</b></div><div>BEST COMBO<b>x${S.best}</b></div><div>COINS<b>${S.coins}</b></div></div>
+    <button class="btn" data-act="after">CONTINUE ▶</button></section>`;
+}
+function questHTML(){
+  const list=QUESTS[S.qkey].map(t=>S.solo?t.replace('Say the days of the week together','Say the days of the week').replace('Shout together:','Shout:').replace('“We are not robots!”','“I am not a robot!”'):t);
+  return `<section class="quest frame">
+    <span style="font-family:var(--pixel);font-size:.7rem;color:#8C2F52">SIDE QUEST · REAL WORLD</span>
+    <h2 style="margin:0;font-family:var(--pixel);font-size:clamp(.85rem,2.4vw,1.1rem);line-height:1.7">Robots can't move like humans. Show them! +20 XP each</h2>
+    <p class="cmd">${esc(list[S.qstep])}</p>
+    <div class="qbar">${list.map((_,i)=>`<i class="${i<S.qstep?'on':''}"></i>`).join('')}</div>
+    <div class="row end"><button class="tool" data-act="sayquest">${SPK} Listen</button><button class="btn" data-act="questdone">DONE! ${S.qstep<list.length-1?'NEXT ▶':'BACK TO MAP ▶'}</button></div>
+  </section>`;
+}
+function victoryHTML(){
+  const total=S.stars.reduce((a,b)=>a+b,0);
+  const rank=total>=18?'LEGENDARY HUMAN':total>=12?'SUPER HUMAN':'HUMAN IN TRAINING';
+  const acc=S.right+S.miss?Math.round(S.right/(S.right+S.miss)*100):100;
+  return `<section class="center pbox frame">
+    <h2>YOU ESCAPED<br>THE CREC!</h2>
+    <div class="lineup" style="gap:16px">${(S.solo?[S.hero]:HEROES.map((_,i)=>i)).map(i=>heroSpr(i)).join('')}</div>
+    <p class="rank">RANK: ${rank}</p>
+    <div class="loot"><div>STARS<b>${total}/21</b></div><div>XP<b>${S.xp}</b></div><div>CORRECT<b>${acc}%</b></div><div>BEST COMBO<b>x${S.best}</b></div><div>COINS<b>${S.coins}</b></div></div>
+    <div class="badges">${Object.entries(ACH).map(([k,[n,d]])=>`<div class="badge ${S.ach.includes(k)?'on':''}">${TROPHY}<span><b>${n}</b><small>${d}</small></span></div>`).join('')}</div>
+    <div class="dialog frame" style="max-width:680px;width:100%;text-align:left"><span class="speaker">FINAL MISSION</span>
+      <p class="say" style="font-size:1.15rem">The door is open! Now make your human ID card. Write 4 sentences about you:</p>
+      <p style="margin:0;font-size:1.05rem">This is me. My name is… · I am… (personality) · I have got… (hair, eyes) · My birthday is in… (month)</p></div>
+    <div class="row" style="justify-content:center"><button class="btn cy" data-act="replayoutro">WATCH THE ENDING</button><button class="btn" data-act="quit">PLAY AGAIN ▶</button></div></section>`;
+}
+function confetti(n){ if(reduced())return; const c=$('#confetti'),cols=['#FFC24D','#7FD3E6','#FF7FA8','#5BD38C','#EEE7D9','#B58CFF'];
+  for(let i=0;i<n;i++){const e=document.createElement('i');e.style.left=Math.random()*100+'vw';e.style.background=rnd(cols);e.style.animationDelay=Math.random()*.6+'s';c.appendChild(e)} setTimeout(()=>c.innerHTML='',3400); }
+
+/* ===== cinematic intro ===== */
+let introRun=0;
+const sleep=(ms,id)=>new Promise((res,rej)=>setTimeout(()=>introRun===id?res():rej('skip'),ms));
+function showGate(){
+  const el=$('#intro'); el.hidden=false;
+  el.innerHTML=`<div class="istage"><div class="layer stars-bg">${Array.from({length:40},()=>`<i style="left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*1.6}s"></i>`).join('')}</div>
+    <div class="layer gate"><p class="coin blink">INSERT COIN</p>
+    <button class="btn" data-act="playintro">▶ PRESS START</button>
+    <button class="btn gh" data-act="skipintro" style="font-size:.6rem">Skip intro</button></div></div>`;
+}
+const BOOT=[['> CREC OS v4.04',''],['> Loading classroom......... OK',''],['> Loading students.......... OK',''],['> Loading teacher........... OK',''],['> Loading robots............ ???','r'],['> WARNING: HUMANS NOT FOUND','r']];
+async function playIntro(){
+  const id=++introRun; try{ac()}catch(_){} setTrack('intro'); mNext=0; const el=$('#intro'); el.hidden=false;
+  el.innerHTML=`<button class="pill skip" data-act="skipintro">Skip ▶▶</button>
+  <div class="istage" id="ist">
+    <div class="layer term" id="term"></div>
+    <div class="layer room-scene" id="scene" style="opacity:0">
+      <svg viewBox="0 0 320 180" class="spr" aria-hidden="true">
+        <rect width="320" height="180" fill="#2B3463"/><rect y="138" width="320" height="42" fill="#1A2045"/><rect y="136" width="320" height="4" fill="#27223A"/>
+        <rect x="70" y="30" width="130" height="64" fill="#1F4A3F" stroke="#7A4A2A" stroke-width="5"/>
+        <rect x="262" y="44" width="36" height="11" fill="#7FD3E6" stroke="#27223A" stroke-width="2"/><text x="280" y="53" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="6" fill="#27223A">CREC</text>
+        <text x="135" y="58" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="7" fill="#EEE7D9">UNIT 1:</text>
+        <text x="135" y="74" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="7" fill="#EEE7D9">WHO AM I?</text>
+        <rect x="12" y="34" width="34" height="40" fill="#3D4884" stroke="#27223A" stroke-width="3"/><path d="M29 34v40M12 54h34" stroke="#27223A" stroke-width="3"/>
+        <rect x="258" y="58" width="44" height="80" fill="#07091A" stroke="#27223A" stroke-width="3"/>
+        <g class="door" id="door"><rect x="258" y="58" width="44" height="80" fill="#7A4A2A" stroke="#27223A" stroke-width="3"/><rect x="264" y="94" width="5" height="5" fill="#FFC24D"/></g>
+        <rect x="234" y="40" width="14" height="10" fill="#27223A"/><rect x="236" y="42" width="10" height="6" fill="#5BD38C" id="lamp"/>
+      </svg>
+      ${HEROES.map((h,i)=>`<div class="ihero" id="h${i}" style="left:${-12-i*10}%">${sprite(HERO_ROWS,h.pal)}</div>`).join('')}
+      <div class="layer alarm" id="alarm"></div>
+    </div>
+    <div class="layer" id="dark" style="opacity:0;background:#07091A"></div>
+    <div class="eye" id="eye">${sprite(BOT_ROWS,botPal('#F0505A','#FFC24D'))}</div>
+    <div class="bigtext" id="big"></div>
+    <div class="army" id="army">${[0,1,2,3,4].map(i=>sprite(BOT_ROWS,botPal(['#7FD3E6','#FF7FA8','#F0505A','#5BD38C','#B58CFF'][i],'#FFC24D'))).join('')}</div>
+    <div class="scan" id="scan"></div>
+    <div class="ilogo" id="ilogo"><h1 class="logo">ESCAPE<br>THE <span>CREC</span></h1><p class="sub404">ROOM 404</p><p class="tag" style="color:#EEE7D9">ENGLISH · UNIT 1: WHO AM I?</p></div>
+    <div class="layer flash" id="flash"></div>
+    <div class="cap" id="cap"></div>
+  </div>`;
+  const cap=(t,robot)=>{const c=$('#cap'); c.textContent=t; c.classList.toggle('robot',!!robot); if(t)say(t);};
+  const shake=()=>{const st=$('#ist'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');};
+  try{
+    const term=$('#term');
+    for(const [line,cls] of BOOT){ term.insertAdjacentHTML('beforeend',`<div class="${cls}">${line}</div>`); sfx(cls?'miss':'click'); await sleep(cls?750:420,id); }
+    term.insertAdjacentHTML('beforeend','<span class="cur"></span>'); await sleep(700,id);
+    term.style.opacity=0; $('#scene').style.opacity=1; await sleep(400,id);
+    cap('Monday. 15:00. A normal day at the CREC…');
+    HEROES.forEach((_,i)=>{ $('#h'+i).style.left=(16+i*11)+'%'; });
+    for(let i=0;i<6;i++){ sfx('step'); await sleep(430,id); }
+    await sleep(500,id);
+    $('#door').classList.add('shut'); await sleep(230,id); sfx('boom'); shake();
+    cap('CLICK! The door is locked.'); $('#lamp').setAttribute('fill','#F0505A'); await sleep(2200,id);
+    $('#alarm').classList.add('on'); siren(); cap('ALERT! ALERT! UNKNOWN LIFE FORMS!',true); await sleep(2400,id);
+    $('#alarm').classList.remove('on'); $('#dark').style.opacity=1; $('#cap').textContent='';
+    $('#eye').classList.add('in'); sfx('boom'); await sleep(1500,id);
+    $('#big').innerHTML='<span class="glitch">IDENTITY<br>NOT FOUND</span>'; sfx('miss'); shake(); await sleep(1600,id);
+    $('#big').innerHTML=''; $('#eye').style.opacity=0;
+    cap('You are robots. Robots never leave Room 404.',true); await sleep(2800,id);
+    $('#army').classList.add('up'); $('#scan').classList.add('go'); sfx('boom'); await sleep(900,id); sfx('boom'); shake();
+    cap('Only humans can escape. Prove it… in ENGLISH!',true); await sleep(3000,id);
+    $('#cap').textContent=''; $('#flash').classList.add('go'); $('#army').style.opacity=.25; await sleep(120,id);
+    $('#ilogo').classList.add('go'); await sleep(380,id); sfx('boom'); shake(); await sleep(300,id); sfx('win'); confetti(60); setTrack('title');
+    await sleep(2600,id);
+    endIntro();
+  }catch(e){}
+}
+
+/* ===== cinematic ending ===== */
+let outroOn=false;
+function fireworks(x,y){ const box=$('#ofw'); if(!box)return; const cols=['#FFC24D','#7FD3E6','#FF7FA8','#5BD38C','#B58CFF','#EEE7D9']; const col=rnd(cols);
+  for(let i=0;i<22;i++){ const a=i/22*Math.PI*2, d=40+Math.random()*50; const f=document.createElement('i'); f.className='fw'; f.style.left=x+'%'; f.style.top=y+'%'; f.style.background=Math.random()<.3?rnd(cols):col;
+    f.style.setProperty('--dx',(Math.cos(a)*d)+'px'); f.style.setProperty('--dy',(Math.sin(a)*d)+'px'); box.appendChild(f); setTimeout(()=>f.remove(),1300); }
+  sfx(rnd(['star','coin','crit'])); }
+async function playOutro(){
+  const id=++introRun; outroOn=true; const el=$('#intro'); el.hidden=false; try{ac()}catch(_){} setTrack('intro'); mNext=0;
+  const team=esc(S.team||(S.solo?HEROES[S.hero].name:'THE HUMANS')); const total=S.stars.reduce((a,b)=>a+b,0);
+  const heroes=(cls,pre,start)=>HEROES.map((_,i)=>S.solo&&i!==S.hero?'':`<div class="${cls}" id="${pre}${i}" style="left:${start(i)}%">${heroSpr(i)}</div>`).join('');
+  el.innerHTML=`<button class="pill skip" data-act="skipoutro">Skip ▶▶</button>
+  <div class="istage" id="ist">
+    <div class="layer" id="o1" style="background:#07091A"><div class="eye eyeglitch" id="oeye" style="transition:opacity .6s;transform:translate(-50%,-50%) scale(1.8);opacity:1">${sprite(BOT_ROWS,botPal('#8C1F2E','#FFC24D'))}</div></div>
+    <div class="layer term" id="oterm" style="opacity:0"></div>
+    <div class="layer room-scene" id="oroom" style="opacity:0">
+      <svg viewBox="0 0 320 180" class="spr" aria-hidden="true">
+        <rect width="320" height="180" fill="#2B3463"/><rect y="138" width="320" height="42" fill="#1A2045"/><rect y="136" width="320" height="4" fill="#27223A"/>
+        <rect x="70" y="30" width="130" height="64" fill="#1F4A3F" stroke="#7A4A2A" stroke-width="5"/>
+        <text x="135" y="58" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="7" fill="#EEE7D9">WE ARE</text>
+        <text x="135" y="74" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="7" fill="#EEE7D9">HUMANS!</text>
+        <rect x="12" y="34" width="34" height="40" fill="#3D4884" stroke="#27223A" stroke-width="3"/><path d="M29 34v40M12 54h34" stroke="#27223A" stroke-width="3"/>
+        <rect x="262" y="44" width="36" height="11" fill="#7FD3E6" stroke="#27223A" stroke-width="2"/><text x="280" y="53" text-anchor="middle" font-family="Press Start 2P, monospace" font-size="6" fill="#27223A">CREC</text>
+        <rect x="258" y="58" width="44" height="80" fill="#FFE29A" stroke="#27223A" stroke-width="3"/>
+        <polygon id="olight" points="258,138 302,138 320,180 220,180" fill="#FFE29A" style="opacity:0;transition:opacity 1s"/>
+        <g class="door shut" id="odoor"><rect x="258" y="58" width="44" height="80" fill="#7A4A2A" stroke="#27223A" stroke-width="3"/><rect x="264" y="94" width="5" height="5" fill="#FFC24D"/></g>
+        <rect x="234" y="40" width="14" height="10" fill="#27223A"/><rect x="236" y="42" width="10" height="6" fill="#F0505A" id="olamp"/>
+      </svg>
+      ${heroes('ohero','oh',i=>14+i*11)}
+    </div>
+    <div class="layer" id="oout" style="opacity:0">
+      <svg viewBox="0 0 320 180" class="spr" style="width:100%;height:100%;display:block" aria-hidden="true">
+        <defs><linearGradient id="osky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3B2D6B"/><stop offset=".6" stop-color="#F2907A"/><stop offset="1" stop-color="#FFC24D"/></linearGradient></defs>
+        <rect width="320" height="180" fill="url(#osky)"/><circle cx="120" cy="112" r="28" fill="#FFE29A"/>
+        <path d="M0 130 Q60 112 120 128 T240 122 T320 126 V180 H0Z" fill="#3E7D5A"/><rect y="152" width="320" height="28" fill="#2F6347"/>
+        <path d="M184 74 L245 46 L306 74Z" fill="#C8502E" stroke="#27223A" stroke-width="3"/>
+        <rect x="190" y="72" width="110" height="80" fill="#EEE7D9" stroke="#27223A" stroke-width="3"/>
+        <rect x="200" y="98" width="18" height="14" fill="#BFE3F2" stroke="#27223A" stroke-width="2"/><rect x="272" y="98" width="18" height="14" fill="#BFE3F2" stroke="#27223A" stroke-width="2"/>
+        <rect x="215" y="79" width="60" height="14" fill="#7FD3E6" stroke="#27223A" stroke-width="2"/><text x="245" y="90" font-family="Press Start 2P, monospace" font-size="8" text-anchor="middle" fill="#27223A">CREC</text>
+        <rect x="232" y="114" width="26" height="38" fill="#FFE29A" stroke="#27223A" stroke-width="3"/>
+      </svg>
+      ${heroes('ohero','ou',()=>74)}
+      <div id="ofw" class="layer" style="pointer-events:none"></div>
+    </div>
+    <div class="credits" id="ocred" style="opacity:0"><div class="roll" id="oroll">
+      <p class="big">ESCAPE<br>THE <span>CREC</span></p>
+      <p>ENGLISH · UNIT 1: WHO AM I?</p>
+      <h3>STARRING</h3>
+      <div class="cast">${HEROES.map((h,i)=>{ if(S.solo&&i!==S.hero)return ''; const pn=S.solo?S.team:S.players[i]; return `<div>${heroSpr(i)}<span>${h.name}${pn?' · '+esc(pn).toUpperCase():''}</span></div>`; }).join('')}</div>
+      <h3>${S.solo?'PLAYER':'TEAM'}</h3><p>${team.toUpperCase()}</p>
+      <h3>RESULTS</h3><p>STARS ${total}/21<br>XP ${S.xp} · BEST COMBO x${S.best}<br>COINS ${S.coins}</p>
+      <h3>ROBOTS DEFEATED</h3>
+      <div class="bots">${LEVELS.map(l=>sprite(BOT_ROWS,botPal(l.col,'#EEE7D9'))).join('')}</div>
+      <p>${LEVELS.map(l=>l.bot).join(' · ')}</p>
+      <h3>MADE AT</h3><p>CREC · CALVIÀ</p>
+      <h3>SPECIAL THANKS</h3><p>THE ENGLISH LANGUAGE<br>AND YOU, HUMANS!</p>
+      <p class="big" style="margin-top:30px">THE END</p>
+    </div></div>
+    <div class="bigtext" id="obig"></div>
+    <div class="layer flash" id="oflash"></div>
+    <div class="cap" id="ocap"></div>
+  </div>`;
+  const cap=(t,robot)=>{const c=$('#ocap'); if(!c)return; c.textContent=t; c.classList.toggle('robot',!!robot); if(t)say(t);};
+  const shake=()=>{const st=$('#ist'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');};
+  const flash=()=>{const f=$('#oflash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');};
+  try{
+    // 1. the Mainframe breaks down
+    cap('NO… NO… SYSTEM FAILURE!',true); sfx('robot'); await sleep(1300,id);
+    sfx('explode'); shake(); await sleep(700,id); sfx('explode'); shake();
+    $('#obig').innerHTML='<span class="glitch">SYSTEM<br>FAILURE</span>'; await sleep(1600,id);
+    flash(); sfx('boom'); $('#o1').style.opacity=0; $('#obig').innerHTML=''; $('#ocap').textContent=''; await sleep(700,id);
+    // 2. reboot terminal
+    const term=$('#oterm'); term.style.opacity=1;
+    for(const [line,cls] of [['> Rebooting CREC OS...',''],['> Scanning the team...',''],['> Heart detected ♥',''],['> Feelings detected',''],['> Good English detected',''],['> IDENTITY FOUND: HUMANS ✓','g']]){
+      term.insertAdjacentHTML('beforeend',`<div class="${cls}">${line}</div>`); sfx(cls?'levelup':'type'); await sleep(cls?1400:520,id); }
+    // 3. the door opens
+    term.style.opacity=0; $('#oroom').style.opacity=1; await sleep(500,id);
+    $('#olamp').setAttribute('fill','#5BD38C'); sfx('door'); $('#odoor').classList.remove('shut'); $('#olight').style.opacity=.75;
+    cap('The door opens…'); await sleep(1800,id);
+    HEROES.forEach((_,i)=>setTimeout(()=>{ const h=$('#oh'+i); if(h)h.style.left='112%'; }, i*220));
+    for(let i=0;i<7;i++){ sfx('step'); await sleep(420,id); }
+    // 4. outside: free!
+    setTrack('victory'); mNext=0; $('#oroom').style.opacity=0; $('#oout').style.opacity=1; $('#ocap').textContent=''; await sleep(500,id);
+    HEROES.forEach((_,i)=>setTimeout(()=>{ const h=$('#ou'+i); if(h)h.style.left=(8+i*10)+'%'; }, i*250));
+    for(let i=0;i<6;i++){ sfx('step'); await sleep(420,id); }
+    HEROES.forEach((_,i)=>{ const h=$('#ou'+i); if(h)h.classList.add('jump'); });
+    cap(`You are free, ${S.team||(S.solo?HEROES[S.hero].name:'humans')}! You escaped the CREC!`);
+    for(let k=0;k<9;k++){ fireworks(15+Math.random()*70, 12+Math.random()*35); await sleep(550,id); }
+    cap('Humans 1 · Robots 0'); for(let k=0;k<5;k++){ fireworks(15+Math.random()*70, 12+Math.random()*35); await sleep(500,id); }
+    // 5. credits
+    $('#ocap').textContent=''; setTrack('title'); mNext=0;
+    const cr=$('#ocred'), roll=$('#oroll'); cr.style.opacity=1; await sleep(600,id);
+    const H=$('#ist').clientHeight, RH=roll.scrollHeight, dur=reduced()?1500:Math.max(14000,(H+RH)*16);
+    if(roll.animate) roll.animate([{transform:'translateY(0)'},{transform:`translateY(${-(H/2+RH/2+H/2)}px)`}],{duration:dur,easing:'linear',fill:'forwards'});
+    await sleep(dur+800,id);
+    endOutro();
+  }catch(e){}
+}
+function endOutro(){ introRun++; outroOn=false; try{speechSynthesis.cancel()}catch(_){} const el=$('#intro'); el.hidden=true; el.innerHTML=''; S.screen='victory'; lastSaid=''; render(); confetti(120); sfx('win'); }
+
+function endIntro(){ introRun++; try{speechSynthesis.cancel()}catch(_){} const el=$('#intro'); el.hidden=true; el.innerHTML=''; S.screen='title'; lastSaid=''; render(); const b=document.querySelector('.title .btn'); b&&b.focus(); }
+
+/* ===== events ===== */
+document.addEventListener('click',e=>{
+  try{ac()}catch(_){}
+  const b=e.target.closest('button'); if(!b||b.disabled)return;
+  if(b.dataset.tg){ const k=b.dataset.tg; S[k]=!S[k];
+    if(k==='voice'&&!S.voice)try{speechSynthesis.cancel()}catch(_){}
+    if(k==='music'){ if(S.music){ ac(); mNext=0; } }
+    if(k==='es'&&S.screen==='battle'){ render(); } else { drawHUD(); save(); } return; }
+  
+  if(b.dataset.mode){ S.solo=b.dataset.mode==='solo'; sfx('click'); render(); return; }
+  if(b.dataset.hero!==undefined&&S.screen==='pick'){ S.hero=+b.dataset.hero; sfx('equip'); render(); return; }
+  if(b.dataset.buy){ buy(b.dataset.buy); return; }
+  if(b.dataset.o!==undefined){ answer(+b.dataset.o); return; }
+  const a=b.dataset.act; if(!a)return; if(!['fifty','playintro','super','superdone'].includes(a))sfx('click');
+  if(a==='playintro'||a==='replay'){ playIntro(); return; }
+  if(a==='skipintro'){ endIntro(); return; }
+  if(a==='skipoutro'){ endOutro(); return; }
+  if(a==='replayoutro'){ playOutro(); return; }
+  if(a==='new'){ const keep={voice:S.voice,es:S.es,big:S.big,sound:S.sound,music:S.music}; S={...FRESH(),...keep,screen:'pick'}; lastSaid=''; render(); }
+  if(a==='continue'){ const d=load(); if(d){ S={...FRESH(),...d,music:S.music}; if(S.screen==='battle'&&(S.state==='won'||S.state==='vs'))S.state=S.state==='won'?'won':'vs'; if(S.state==='won'){winLevel();return;} lastSaid=''; render(); } }
+  if(a==='go'){ S.team=($('#team').value||'').trim(); if(!S.solo){ S.players=HEROES.map((_,i)=>(($('#pl'+i)||{}).value||'').trim()); S.hero=0; } else S.players=['','','','','']; S.screen='story'; S.story=0; render(); }
+  if(a==='storynext'){ sfx('type'); if(S.story<STORY.length-1){S.story++;} else S.screen='map'; render(); }
+  if(a==='saystory') say(STORY[S.story][1]);
+  if(a==='shop'){ S.shop=!S.shop; render(); }
+  if(a==='enter'){ sfx('door'); S.shop=false; startLevel(); render(); }
+  if(a==='sayhi') say(LEVELS[S.level].hi);
+  if(a==='fight'){ S.state='ask'; S.bubble=''; render(); }
+  if(a==='sayq') say(S.state==='super'?supText(LEVELS[S.level]):S.qs[S.qi].p);
+  if(a==='help'){ const h=$('#help'); if(h){h.hidden=!h.hidden; b.setAttribute('aria-expanded',String(!h.hidden));} }
+  if(a==='fifty'){ const q=S.qs[S.qi]; const wrong=q.opts.map((o,i)=>i).filter(i=>!(q.look?i===q.a:q.opts[i]===q.a)&&!S.tried.includes(i)); if(wrong.length){ S.removed=[rnd(wrong)]; S.fifty--; S.used50=true; sfx('coin'); render(); } }
+  if(a==='super'){ S.prevState=S.state; S.state='super'; sfx('super'); render(); }
+  if(a==='saysuper') say(supText(LEVELS[S.level]));
+  if(a==='supercancel'){ S.state=S.prevState||'ask'; render(); }
+  if(a==='superdone'){ S.hp=Math.max(0,S.hp-2); S.charge=0; S.xp+=40; S.coins+=2; unlock('super'); S.bubble='NOOO! What was THAT?!'; checkPhase(); sfx('super');
+    if(S.hp<=0){ S.state='ask'; render('super'); setTimeout(winLevel,700); return; }
+    S.state=S.prevState==='right'?'right':'ask'; render('super'); }
+  if(a==='next') nextQ();
+  if(a==='after'){ const done=S.level; if(!S.solo)S.hero=(S.hero+1)%HEROES.length; if(LEVELS[done].boss){ unlock('boss'); if(!S.used50)unlock('nohelp'); if(S.stars.reduce((x,y)=>x+y,0)>=21)unlock('legend'); S.screen='victory'; save(); playOutro(); return; }
+    S.level=done+1; S.walkFrom=done; if(QUESTS[done]){ S.screen='quest'; S.qstep=0; S.qkey=done; } else S.screen='map'; render(); }
+  if(a==='sayquest') say(QUESTS[S.qkey][S.qstep]);
+  if(a==='questdone'){ S.xp+=20; sfx('quest'); const list=QUESTS[S.qkey]; if(S.qstep<list.length-1){S.qstep++; render();} else { S.screen='map'; render(); } }
+  if(a==='quit'){ if(S.screen!=='victory')save(); else { try{localStorage.removeItem('room404v3')}catch(_){} } S.screen='title'; render(); }
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(!$('#intro').hidden){ if(e.key==='Escape'){ outroOn?endOutro():endIntro(); } return; }
+  if(S.screen==='battle'&&['1','2','3'].includes(e.key)){ const b=document.querySelector(`.opt[data-o="${+e.key-1}"]`); if(b&&!b.disabled)answer(+e.key-1); }
+  if(e.key==='Enter'&&document.activeElement===document.body){ const b=document.querySelector('#nextbtn, .dialog .btn, .center .btn, .quest .btn, .maptools .btn:last-child, .sel .btn, .title .btn'); if(b){e.preventDefault(); b.click();} }
+});
+let lastHover=null; document.addEventListener('pointerover',e=>{ const o=e.target.closest('.opt,.btn,.room,.hero'); if(o&&o!==lastHover&&!o.disabled){ lastHover=o; sfx('blip'); } else if(!o) lastHover=null; });
+document.addEventListener('input',e=>{ if(e.target.id==='team')S.team=e.target.value; if(e.target.dataset.pl!==undefined)S.players[+e.target.dataset.pl]=e.target.value; });
+let rz; window.addEventListener('resize',()=>{clearTimeout(rz); rz=setTimeout(()=>{ if(S.screen==='map')render(); },200)});
+try{speechSynthesis.getVoices()}catch(e){}
+render();
+showGate();
+</script>
+
+</html>
